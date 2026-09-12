@@ -72,7 +72,7 @@ export function printReport(data: HomeData, lang: Lang, title: string): void {
     .map((c) => {
       const task = byId.get(c.task_id);
       const d = parseKey(c.on_date);
-      return `<tr><td>${c.on_date} (${dayNames[d.getDay()]})</td><td>${esc(task?.title ?? "")}</td><td>${esc(task?.category ?? "")}</td><td>${fmt(task?.time)}</td><td>${c.kind}</td></tr>`;
+      return `<tr><td>${c.on_date} (${dayNames[d.getDay()]})</td><td>${esc(task?.title ?? "")}</td><td>${esc(task?.category ?? "")}</td><td>${fmt(task?.time ?? null)}</td><td>${c.kind}</td></tr>`;
     })
     .join("");
   el.innerHTML = `
