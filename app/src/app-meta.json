@@ -1,7 +1,8 @@
 {
-  "og_title": null,
-  "og_description": null,
-  "og_image_url": null,
-  "favicon_url": null,
-  "og_video_url": null
+  "og_title": "DayAxis — Daily Life Toolkit",
+  "og_description": "One calm place for tasks, reminders, meals, movement, trusted workers and smart help. Day & night, 6 languages, works for the whole family.",
+  "og_image_url": "/brand/og-card.svg",
+  "favicon_url": "/brand/favicon.svg",
+  "og_video_url": null,
+  "marketplace_cover_url": "/brand/og-card.svg"
 }

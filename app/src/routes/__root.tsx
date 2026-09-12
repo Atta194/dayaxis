@@ -95,6 +95,12 @@ function buildHead(meta: AppMeta) {
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:wght@500;600;700&display=swap",
+      },
       ...(favicon ? [{ rel: "icon", href: favicon }] : []),
     ],
   };
@@ -161,14 +167,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" data-theme="default-dark" style={{ colorScheme: "dark" }}>
-      {/* Marketplace apps are permanently dark: data-theme is pinned on <html>
-          above. Do not add quanta's bootstrapScript/ThemeController, a theme
-          toggle, or a light mode. */}
+    <html lang="en" style={{ colorScheme: "light" }}>
       <head>
         <HeadContent />
+        {/* apply saved theme/lang before first paint (SSR-safe, no flash) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('da.theme');if(t==='dark'){document.documentElement.dataset.theme='dark';document.documentElement.style.colorScheme='dark';}var l=localStorage.getItem('da.lang');if(l){document.documentElement.lang=l;if(l==='ar')document.documentElement.dir='rtl';}}catch(e){}",
+          }}
+        />
       </head>
-      <body className="bg-q-background-primary text-q-text-primary">
+      <body>
         {children}
         <Scripts />
       </body>

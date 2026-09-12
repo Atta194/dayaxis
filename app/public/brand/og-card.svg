@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#F6F3EA"/>
+  <circle cx="940" cy="120" r="240" fill="#57BFA9" opacity="0.10"/>
+  <circle cx="120" cy="540" r="200" fill="#E8705F" opacity="0.08"/>
+  <circle cx="620" cy="315" r="170" fill="none" stroke="#1E7A6B" stroke-width="14" opacity="0.20"/>
+  <circle cx="620" cy="315" r="170" fill="none" stroke="#1E7A6B" stroke-width="14"
+    stroke-dasharray="760 308" stroke-linecap="round" transform="rotate(-90 620 315)"/>
+  <path d="M545 315 L605 375 L700 262" fill="none" stroke="#E8705F" stroke-width="26"
+    stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="90" y="250" font-family="Georgia, 'Times New Roman', serif" font-size="108" font-weight="700" fill="#24312D">DayAxis</text>
+  <text x="92" y="330" font-family="Arial, Helvetica, sans-serif" font-size="40" fill="#5C6B65">Your daily life, gently under control.</text>
+  <rect x="92" y="380" rx="30" width="330" height="64" fill="#E8705F"/>
+  <text x="112" y="423" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="600" fill="#FFFDF6">Open the toolkit</text>
+  <text x="92" y="530" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#5C6B65">Tasks · reminders · meals · movement · trusted workers · smart help</text>
+</svg>
