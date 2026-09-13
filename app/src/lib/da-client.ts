@@ -49,8 +49,12 @@ export interface DaAct {
   postponeTask(id: string, date: string, days: number): Promise<DaResult>;
   deleteTask(id: string): Promise<DaResult>;
   restoreTask(id: string): Promise<DaResult>;
-  addMember(name: string, color: string): Promise<DaResult>;
-  renameMember(id: number, name: string): Promise<DaResult>;
+  addMember(name: string, color: string, memberId: number | null): Promise<DaResult>;
+  renameMember(id: number, name: string, memberId: number | null): Promise<DaResult>;
+  deleteMember(id: number, memberId: number | null): Promise<DaResult>;
+  approveWorker(id: number, approve: boolean, memberId: number | null): Promise<DaResult>;
+  requestOtp(phone: string): Promise<DaResult & { data?: { code?: string; sms?: boolean } }>;
+  verifyOtp(phone: string, code: string): Promise<DaResult>;
   saveWorker(w: Record<string, unknown>): Promise<DaResult>;
   deleteWorker(id: number): Promise<DaResult>;
   setWorkerStatus(id: number, status: string, availability: string): Promise<DaResult>;
@@ -153,8 +157,12 @@ export function useDa() {
       },
       deleteTask: async (id) => call("task_delete", { id }),
       restoreTask: async (id) => call("task_restore", { id }),
-      addMember: async (name, color) => call("member_add", { name, color }),
-      renameMember: async (id, name) => call("member_rename", { id, name }),
+      addMember: async (name, color, memberId) => call("member_add", { name, color, memberId }),
+      renameMember: async (id, name, memberId) => call("member_rename", { id, name, memberId }),
+      deleteMember: async (id, memberId) => call("member_delete", { id, memberId }),
+      approveWorker: async (id, approve, memberId) => call("worker_approve", { id, approve, memberId }),
+      requestOtp: async (phone) => call("request_otp", { phone }),
+      verifyOtp: async (phone, code) => call("verify_otp", { phone, code }),
       saveWorker: async (w) => call("worker_save", { worker: w }),
       deleteWorker: async (id) => call("worker_delete", { id }),
       setWorkerStatus: async (id, status, availability) => call("worker_status", { id, status, availability }),

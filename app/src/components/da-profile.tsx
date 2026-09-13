@@ -21,6 +21,7 @@ export default function Profile() {
   const [lead, setLead] = useState(Number(lsGet(LS.reminderLead, "5")) || 5);
   const fileRef = useRef<HTMLInputElement>(null);
   const [showAccount, setShowAccount] = useState(data.account_email != null);
+  const amOwner = memberId != null && (data.members.find((x) => x.id === memberId)?.is_owner === 1);
 
   const notifyOn = lsGet(LS.notify) === "1";
   const voiceOn = lsGet(LS.voiceRem) === "1";
@@ -66,33 +67,70 @@ export default function Profile() {
 
       <div className="card mt3">
         <div className="row-b">
-          <h3 className="h-sec"><Ic name="users" /> {t("members")}</h3>
-          <div className="row">
-            <input className="input" style={{ width: 150 }} placeholder={t("add_member")} value={newMember}
-              onChange={(e) => setNewMember(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && newMember.trim()) { void act.addMember(newMember.trim(), COLORS[data.members.length % COLORS.length]); setNewMember(""); toast(t("added")); } }} />
-            <button className="btn btn-primary btn-sm" onClick={() => { if (newMember.trim()) { void act.addMember(newMember.trim(), COLORS[data.members.length % COLORS.length]); setNewMember(""); toast(t("added")); } }}>
-              <Ic name="plus" /> {t("add_member")}
-            </button>
+          <div>
+            <h3 className="h-sec"><Ic name="users" /> {t("members")}</h3>
+            <p className="small muted mt1 tnum">{t("guests_cap").replace("{n}", String(data.members.length))}</p>
           </div>
+          {amOwner ? (
+            data.members.length >= 5 ? (
+              <span className="small muted">{t("max_guests")}</span>
+            ) : (
+              <div className="row">
+                <input className="input" style={{ width: 150 }} placeholder={t("add_member")} value={newMember}
+                  onChange={(e) => setNewMember(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && newMember.trim()) { void act.addMember(newMember.trim(), COLORS[data.members.length % COLORS.length], memberId); setNewMember(""); toast(t("added")); } }} />
+                <button className="btn btn-primary btn-sm" onClick={() => { if (newMember.trim()) { void act.addMember(newMember.trim(), COLORS[data.members.length % COLORS.length], memberId); setNewMember(""); toast(t("added")); } }}>
+                  <Ic name="plus" /> {t("add_member")}
+                </button>
+              </div>
+            )
+          ) : (
+            <span className="small muted">{t("no_admin")}</span>
+          )}
         </div>
         <div className="grid mt2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}>
           {data.members.map((m) => (
             <div key={m.id} className="card card-soft row" style={{ padding: 12, cursor: "pointer" }}
               onClick={() => { setMemberId(m.id); lsSet(LS.guest, String(m.id)); toast(`${t("switch_to")} ${m.name}`); }}>
               <Avatar name={m.name} color={m.color} size={40} />
-              {renaming === m.id ? (
-                <input className="input flex1" value={renameVal} autoFocus
-                  onChange={(e) => setRenameVal(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => { if (e.key === "Enter") { void act.renameMember(m.id, renameVal); setRenaming(null); } }}
-                  onBlur={() => setRenaming(null)} />
-              ) : (
-                <span className="flex1" style={{ fontWeight: 700, fontSize: 14 }}>
+              <span className="flex1" style={{ minWidth: 0 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {m.name} {memberId === m.id ? <span style={{ color: "var(--brand)" }}>✓</span> : null}
                 </span>
-              )}
-              <button className="icon-btn" style={{ width: 30, height: 30 }} onClick={(e) => { e.stopPropagation(); setRenaming(m.id); setRenameVal(m.name); }}><Ic name="user" size={14} /></button>
+                {m.is_owner === 1 ? (
+                  <span className="small" style={{ color: "var(--brand)", fontWeight: 700 }}>{t("owner_badge")}</span>
+                ) : (
+                  <span style={{ fontSize: 11.5, color: "var(--ink3)" }}>{t("guest")}</span>
+                )}
+              </span>
+              {renaming === m.id ? (
+                <input className="input" style={{ width: 90, padding: "6px 8px", fontSize: 13 }} value={renameVal} autoFocus
+                  onChange={(e) => setRenameVal(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => { if (e.key === "Enter") { void act.renameMember(m.id, renameVal, memberId); setRenaming(null); } }}
+                  onBlur={() => setRenaming(null)} />
+              ) : null}
+              {amOwner ? (
+                <>
+                  <button className="icon-btn" style={{ width: 30, height: 30 }} title={t("edit")}
+                    onClick={(e) => { e.stopPropagation(); setRenaming(m.id); setRenameVal(m.name); }}>
+                    <Ic name="user" size={14} />
+                  </button>
+                  {m.is_owner !== 1 ? (
+                    <button className="icon-btn" style={{ width: 30, height: 30, color: "var(--danger)" }} title={t("delete")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(t("sure_delete"))) {
+                          void act.deleteMember(m.id, memberId);
+                          if (memberId === m.id) setMemberId(null);
+                          toast(t("delete"));
+                        }
+                      }}>
+                      <Ic name="trash" size={14} />
+                    </button>
+                  ) : null}
+                </>
+              ) : null}
             </div>
           ))}
         </div>

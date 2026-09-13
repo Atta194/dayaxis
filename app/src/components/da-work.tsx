@@ -1,5 +1,5 @@
 /* DayAxis - Work view: worker marketplace (find/contact) + my worker profile. */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { TRADES } from "../lib/da-content";
 import { memberName, useCtx } from "./da-ctx";
@@ -9,6 +9,7 @@ import type { Worker } from "../lib/da-types";
 export default function Work() {
   const { data, act, t, toast, memberId, lang } = useCtx();
   const [tab, setTab] = useState<"find" | "mine">("find");
+  const wOwner = memberId != null && (data.members.find((x) => x.id === memberId)?.is_owner === 1);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"best" | "exp" | "jobs">("best");
   const [mode, setMode] = useState<"grid" | "list">("grid");
@@ -40,6 +41,29 @@ export default function Work() {
           </div>
         </div>
       </div>
+
+      {wOwner && data.pending_workers.length > 0 ? (
+        <div className="card mt3">
+          <div className="row-b">
+            <h3 className="h-sec" style={{ fontSize: 15.5 }}>{t("pending_queue")}</h3>
+            <span className="tnum small muted">{data.pending_workers.length}</span>
+          </div>
+          <div className="mt2" style={{ display: "grid", gap: 8 }}>
+            {data.pending_workers.map((pw) => (
+              <div key={pw.id} className="row" style={{ borderTop: "1px solid var(--line)", paddingTop: 8 }}>
+                <Avatar name={pw.name} color="#1E7A6B" size={36} src={pw.photo || undefined} />
+                <span className="flex1" style={{ minWidth: 0 }}>
+                  <b style={{ fontSize: 14 }}>{pw.name}</b>
+                  <span className="small muted"> · {pw.trade} · {pw.location} · {pw.phone}</span>
+                  {pw.phone_verified !== 1 ? <span className="small" style={{ color: "var(--gold)" }}> · {t("phone_pending")}</span> : null}
+                </span>
+                <button className="btn btn-primary btn-sm" onClick={() => void act.approveWorker(pw.id, true, memberId)}><Ic name="check" size={13} /> {t("approve")}</button>
+                <button className="btn btn-danger btn-sm" onClick={() => void act.approveWorker(pw.id, false, memberId)}>{t("reject")}</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {tab === "find" ? (
         <>
@@ -99,11 +123,14 @@ export function WorkerCard({ w }: { w: Worker }) {
   return (
     <div className="worker" style={{ flexDirection: "column" }}>
       <div className="row" style={{ alignItems: "flex-start", flexWrap: "nowrap" }}>
-        <Avatar name={w.name} color={`hsl(${(w.id * 47) % 360}, 42%, 52%)`} size={50} />
+        <Avatar name={w.name} color={`hsl(${(w.id * 47) % 360}, 42%, 52%)`} size={50} src={w.photo || undefined} />
         <div className="flex1">
           <div className="row" style={{ gap: 6 }}>
             <b style={{ fontSize: 15.5 }}>{w.name}</b>
             <span className="chip chip-tag" style={{ cursor: "default", padding: "1px 8px", fontSize: 11 }}>{w.trade}</span>
+            {w.phone_verified === 1 ? (
+              <span className="chip chip-tag" style={{ cursor: "default", padding: "1px 8px", fontSize: 11, color: "var(--ok)" }}><Ic name="check" size={11} /> {t("phone_ok")}</span>
+            ) : null}
           </div>
           <div className="small muted mt1" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}><Ic name="map" size={13} /> {w.location || "-"}</span>
@@ -191,6 +218,9 @@ function MyProfile({ worker, by }: { worker: Worker | null; by: string }) {
     <div className="mt3" style={{ display: "grid", gap: 14 }}>
       <div className="card">
         <h3 className="h-sec" style={{ fontSize: 15.5 }}>{t("preview_public")}</h3>
+        {worker.approved === 0 ? (
+          <span className="chip chip-tag mt1" style={{ cursor: "default", color: "var(--gold)" }}>{t("pending_approval")}</span>
+        ) : null}
         <p className="small muted mt1">{t("create_profile_cta")}</p>
         <div className="mt2"><WorkerCard w={worker} /></div>
       </div>
@@ -243,9 +273,59 @@ function WorkerForm({ f, set, t, save, isNew }: {
   save: () => void;
   isNew?: boolean;
 }) {
+  const { act, toast } = useCtx();
+  const [otpStep, setOtpStep] = useState<"idle" | "sent">("idle");
+  const [otpInput, setOtpInput] = useState("");
+  const [sentCode, setSentCode] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const sv = (k: string) => (typeof f[k] === "string" ? String(f[k]) : String(f[k] ?? ""));
+
+  const pickPhoto = (file: File) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const size = 128;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const scale = Math.max(size / img.width, size / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+      set("photo", canvas.toDataURL("image/jpeg", 0.8));
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
+
+  const sendOtp = async () => {
+    const phone = sv("phone");
+    if (phone.trim().length < 5) { toast(t("phone"), "warn"); return; }
+    const res = await act.requestOtp(phone.trim());
+    const code = res.ok && res.data && typeof (res.data as { code?: unknown }).code === "string" ? (res.data as { code: string }).code : "";
+    setSentCode(code);
+    setOtpStep("sent");
+    toast(code ? t("otp_sent_note") : "network", "warn");
+  };
+
+  const checkOtp = async () => {
+    const res = await act.verifyOtp(sv("phone").trim(), otpInput.trim());
+    if (res.ok) { setOtpStep("idle"); setOtpInput(""); setSentCode(""); toast(t("phone_ok")); }
+    else toast(res.error === "bad-otp" ? t("otp_code") : res.error, "warn");
+  };
+
   return (
     <div style={{ display: "grid", gap: 11, marginTop: 14 }}>
+      <div className="row">
+        {sv("photo") ? <Avatar name={sv("name") || "P"} color="#1E7A6B" size={64} src={sv("photo")} /> : <Avatar name={sv("name") || "P"} color="#1E7A6B" size={64} />}
+        <div>
+          <button className="btn btn-sm" onClick={() => fileRef.current?.click()}><Ic name="cam" size={14} /> {t("add_photo")}</button>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }}
+            onChange={(e) => { const fl = e.target.files?.[0]; if (fl) pickPhoto(fl); e.target.value = ""; }} />
+        </div>
+      </div>
       <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div className="field"><label>{t("full_name")} *</label><input className="input" value={sv("name")} onChange={(e) => set("name", e.target.value)} /></div>
         <div className="field"><label>{t("trade")}</label>
@@ -255,7 +335,21 @@ function WorkerForm({ f, set, t, save, isNew }: {
         </div>
         <div className="field"><label>{t("location")}</label><input className="input" value={sv("location")} onChange={(e) => set("location", e.target.value)} placeholder="City" /></div>
         <div className="field"><label>{t("experience_years")}</label><input className="input" type="number" min={0} max={60} value={sv("experience_years")} onChange={(e) => set("experience_years", Math.max(0, Number(e.target.value) || 0))} /></div>
-        <div className="field"><label>{t("phone")}</label><input className="input" value={sv("phone")} onChange={(e) => set("phone", e.target.value)} /></div>
+        <div className="field">
+          <label>{t("phone")}</label>
+          <input className="input" value={sv("phone")} onChange={(e) => set("phone", e.target.value)} />
+          {otpStep === "idle" ? (
+            <button className="btn btn-soft btn-sm mt1" onClick={() => void sendOtp()}><Ic name="shield" size={14} /> {t("verify_phone")}</button>
+          ) : (
+            <>
+              <div className="row mt1" style={{ flexWrap: "nowrap" }}>
+                <input className="input" style={{ width: 130 }} placeholder={t("otp_code")} value={otpInput} onChange={(e) => setOtpInput(e.target.value)} />
+                <button className="btn btn-primary btn-sm" onClick={() => void checkOtp()}><Ic name="check" size={14} /></button>
+              </div>
+              {sentCode ? <p className="small muted mt1 tnum" style={{ wordBreak: "break-all" }}>Code: {sentCode} · {t("otp_sent_note")}</p> : null}
+            </>
+          )}
+        </div>
         <div className="field"><label>{t("email")}</label><input className="input" value={sv("email")} onChange={(e) => set("email", e.target.value)} /></div>
       </div>
       <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>

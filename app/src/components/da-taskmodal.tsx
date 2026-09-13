@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { CATS } from "../lib/da-content";
 import { memberColor, memberName, useCtx } from "./da-ctx";
-import { fmtHM, uid } from "../lib/da-types";
+import { fmtHM, speechInput, uid } from "../lib/da-types";
 import { Ic, Modal } from "./da-ui";
 
 export function TaskRow({ task, date, onEdited }: {
@@ -106,7 +106,8 @@ export function TaskModal({ onClose, presetDate, preset }: {
   presetDate?: string;
   preset?: import("../lib/da-types").Task;
 }) {
-  const { data, act, t, toast, memberId } = useCtx();
+  const { data, act, t, toast, memberId, lang } = useCtx();
+  const [listening, setListening] = useState(false);
   const [title, setTitle] = useState(preset?.title ?? "");
   const [cat, setCat] = useState(preset?.category ?? "custom");
   const [date, setDate] = useState(preset?.task_date ?? presetDate ?? "");
@@ -143,7 +144,21 @@ export function TaskModal({ onClose, presetDate, preset }: {
       <div style={{ display: "grid", gap: 12 }}>
         <div className="field">
           <label>{t("title")}</label>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("add_task")} autoFocus />
+          <div className="row" style={{ flexWrap: "nowrap" }}>
+            <input className="input flex1" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("add_task")} autoFocus />
+            <button
+              className="icon-btn" title={t("speak")}
+              style={listening ? { background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" } : undefined}
+              onClick={() => {
+                if (listening) return;
+                setListening(true);
+                const stop = speechInput((text) => { setListening(false); setTitle(text); }, lang);
+                setTimeout(stop, 6000);
+              }}
+            >
+              <Ic name="mic" />
+            </button>
+          </div>
         </div>
         <div className="field">
           <label>{t("category")}</label>

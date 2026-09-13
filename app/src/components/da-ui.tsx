@@ -193,8 +193,15 @@ export function Pose({ pose }: { pose: string }) {
 }
 
 /* ---------- misc ---------- */
-export function Avatar({ name, color, size = 52 }: { name: string; color: string; size?: number }) {
+export function Avatar({ name, color, size = 52, src }: { name: string; color: string; size?: number; src?: string }) {
   const initials = name.trim().slice(0, 2).toUpperCase();
+  if (src) {
+    return (
+      <span className="avatar" style={{ overflow: "hidden", width: size, height: size, borderRadius: size * 0.3, background: color }}>
+        <img src={src} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      </span>
+    );
+  }
   return (
     <span className="avatar" style={{ background: color, width: size, height: size, fontSize: size * 0.36, borderRadius: size * 0.3 }}>
       {initials}

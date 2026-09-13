@@ -24,6 +24,12 @@ function clampNum(v: unknown, fallback: number, min: number, max: number): numbe
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
+async function isHomeOwner(DB: D1Database, home: string, memberId: unknown): Promise<boolean> {
+  const id = clampNum(memberId, 0, 1, 1e9);
+  const row = await DB.prepare("SELECT is_owner FROM members WHERE id = ? AND home_id = ?").bind(id, home).first<{ is_owner: number }>();
+  return row?.is_owner === 1;
+}
+
 const CATS: string[] = ["meal", "medicine", "childcare", "exercise", "family", "break", "custom"];
 const REPEATS: string[] = ["none", "weekly", "custom"];
 
@@ -58,6 +64,7 @@ export const da = createServerFn({ method: "POST" })
         case "sync": return await syncAll(DB, home);
         case "member_add": return await memberAdd(DB, home, p);
         case "member_rename": return await memberRename(DB, home, p);
+        case "member_delete": return await memberDelete(DB, home, p);
         case "task_save": return await taskSave(DB, home, p);
         case "task_delete": return await taskDelete(DB, home, p, true);
         case "task_restore": return await taskDelete(DB, home, p, false);
@@ -66,6 +73,9 @@ export const da = createServerFn({ method: "POST" })
         case "worker_save": return await workerSave(DB, home, p);
         case "worker_delete": return await workerDelete(DB, home, p);
         case "worker_status": return await workerStatus(DB, home, p);
+        case "worker_approve": return await workerApprove(DB, home, p);
+        case "request_otp": return await requestOtp(DB, p);
+        case "verify_otp": return await verifyOtp(DB, home, p);
         case "review_add": return await reviewAdd(DB, home, p);
         case "feedback_add": return await feedbackAdd(DB, home, p);
         case "mind_add": return await mindAdd(DB, home, p);
@@ -86,7 +96,7 @@ export const da = createServerFn({ method: "POST" })
 
 async function workersWithReviews(DB: D1Database): Promise<{ workers: Worker[]; reviews: Review[] }> {
   const [ws, rs] = await Promise.all([
-    DB.prepare("SELECT * FROM workers ORDER BY jobs_done DESC").all<Worker & { rating?: number }>(),
+    DB.prepare("SELECT * FROM workers WHERE approved = 1 ORDER BY jobs_done DESC").all<Worker & { rating?: number }>(),
     DB.prepare("SELECT * FROM reviews ORDER BY id DESC").all<Review>(),
   ]);
   const reviews = rs.results ?? [];
@@ -106,7 +116,8 @@ async function workersWithReviews(DB: D1Database): Promise<{ workers: Worker[]; 
 
 async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: HomeData }> {
   await DB.prepare("INSERT OR IGNORE INTO homes (id) VALUES (?)").bind(home).run();
-  const [m, t, c, f, a, ww, mind, sub, ads] = await Promise.all([
+  const isOwnerH = (await DB.prepare("SELECT 1 FROM members WHERE home_id = ? AND is_owner = 1").bind(home).first()) !== null;
+  const [m, t, c, f, a, ww, mind, sub, ads, pending] = await Promise.all([
     DB.prepare("SELECT * FROM members WHERE home_id = ? ORDER BY id").bind(home).all<Member>(),
     DB.prepare("SELECT * FROM tasks WHERE home_id = ? AND status IN ('active','deleted') ORDER BY created_at DESC").bind(home).all<Task>(),
     DB.prepare("SELECT * FROM completions WHERE task_id IN (SELECT id FROM tasks WHERE home_id = ?) ORDER BY on_date DESC").bind(home).all(),
@@ -116,6 +127,9 @@ async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: 
     DB.prepare("SELECT * FROM mind_log WHERE home_id = ? ORDER BY id DESC LIMIT 300").bind(home).all<MindLog>(),
     DB.prepare("SELECT * FROM subscriptions WHERE home_id = ?").bind(home).first<Subscription>(),
     DB.prepare("SELECT * FROM ads WHERE home_id = ? AND active = 1 ORDER BY id DESC").bind(home).all<Ad>(),
+    isOwnerH
+      ? DB.prepare("SELECT * FROM workers WHERE approved = 0 ORDER BY id ASC").all<Worker>()
+      : Promise.resolve({ results: [] as Worker[] }),
   ]);
   const my = ww.workers.filter((w) => w.owner_home === home);
   return {
@@ -132,6 +146,7 @@ async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: 
       })),
       subscription: sub ?? null,
       ads: ads.results ?? [],
+      pending_workers: isOwnerH ? (pending.results ?? []).map((x) => ({ ...x, rating: 0, review_count: 0 }) as Worker) : [],
       workers: ww.workers,
       reviews: ww.reviews,
       my_workers: my,
@@ -141,16 +156,31 @@ async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: 
 }
 
 async function memberAdd(DB: D1Database, home: string, p: Record<string, unknown>) {
+  if (!(await isHomeOwner(DB, home, p.memberId))) return { ok: false as const, error: "owner-only" };
+  const count = await DB.prepare("SELECT COUNT(*) AS n FROM members WHERE home_id = ?").bind(home).first<{ n: number }>();
+  if (count && count.n! >= 5) return { ok: false as const, error: "max-guests" };
   const name = str(p.name, "Guest", 60) || "Guest";
   const color = str(p.color, "#1E7A6B", 9) || "#1E7A6B";
-  await DB.prepare("INSERT INTO members (home_id, name, color) VALUES (?,?,?)").bind(home, name, color).run();
+  await DB.prepare("INSERT INTO members (home_id, name, color, is_owner) VALUES (?,?,?,0)").bind(home, name, color).run();
   return syncAll(DB, home);
 }
 
 async function memberRename(DB: D1Database, home: string, p: Record<string, unknown>) {
+  if (!(await isHomeOwner(DB, home, p.memberId))) return { ok: false as const, error: "owner-only" };
   const id = clampNum(p.id, 0, 1, 1e9);
   const name = str(p.name, "Guest", 60) || "Guest";
   await DB.prepare("UPDATE members SET name = ? WHERE id = ? AND home_id = ?").bind(name, id, home).run();
+  return syncAll(DB, home);
+}
+
+async function memberDelete(DB: D1Database, home: string, p: Record<string, unknown>) {
+  if (!(await isHomeOwner(DB, home, p.memberId))) return { ok: false as const, error: "owner-only" };
+  const id = clampNum(p.id, 0, 1, 1e9);
+  const target = await DB.prepare("SELECT is_owner FROM members WHERE id = ? AND home_id = ?").bind(id, home).first<{ is_owner: number }>();
+  if (!target) return { ok: false as const, error: "no-member" };
+  if (target.is_owner === 1) return { ok: false as const, error: "owner-protected" };
+  await DB.prepare("DELETE FROM members WHERE id = ? AND home_id = ?").bind(id, home).run();
+  await DB.prepare("UPDATE tasks SET member_id = NULL WHERE member_id = ? AND home_id = ?").bind(id, home).run();
   return syncAll(DB, home);
 }
 
@@ -229,17 +259,20 @@ async function workerSave(DB: D1Database, home: string, p: Record<string, unknow
   const exp = clampNum(w.experience_years, 0, 0, 60);
   const bio = str(w.bio, "", 1000);
   const video = str(w.video_url, "", 500);
+  const photo = str(w.photo, "", 200000);
   const status = ["available", "busy", "offline"].includes(str(w.status, "available", 12)) ? str(w.status, "available", 12) : "available";
   const availability = ["now", "today", "week"].includes(str(w.availability, "now", 10)) ? str(w.availability, "now", 10) : "now";
   const rate = str(w.rate, "", 40);
   if (id) {
     await DB.prepare(
-      `UPDATE workers SET name=?, trade=?, location=?, phone=?, email=?, experience_years=?, bio=?, video_url=?, status=?, availability=?, rate=? WHERE id=?`,
-    ).bind(name, trade, location, phone, email, exp, bio, video, status, availability, rate, id).run();
+      `UPDATE workers SET name=?, trade=?, location=?, phone=?, email=?, experience_years=?, bio=?, video_url=?, photo=?, status=?, availability=?, rate=? WHERE id=?`,
+    ).bind(name, trade, location, phone, email, exp, bio, video, photo, status, availability, rate, id).run();
   } else {
+    const isOwner = (await DB.prepare("SELECT 1 FROM members WHERE home_id = ? AND is_owner = 1").bind(home).first()) !== null;
     await DB.prepare(
-      `INSERT INTO workers (owner_home, name, trade, location, phone, email, experience_years, bio, video_url, status, availability, rate) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-    ).bind(home, name, trade, location, phone, email, exp, bio, video, status, availability, rate).run();
+      `INSERT INTO workers (owner_home, name, trade, location, phone, email, experience_years, bio, video_url, photo, status, availability, rate, approved)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    ).bind(home, name, trade, location, phone, email, exp, bio, video, photo, status, availability, rate, isOwner ? 1 : 0).run();
   }
   return syncAll(DB, home);
 }
@@ -258,6 +291,35 @@ async function workerStatus(DB: D1Database, home: string, p: Record<string, unkn
   const status = ["available", "busy", "offline"].includes(str(p.status, "available", 12)) ? str(p.status, "available", 12) : "available";
   const availability = ["now", "today", "week"].includes(str(p.availability, "now", 10)) ? str(p.availability, "now", 10) : "now";
   await DB.prepare("UPDATE workers SET status = ?, availability = ? WHERE id = ?").bind(status, availability, id).run();
+  return syncAll(DB, home);
+}
+
+async function workerApprove(DB: D1Database, home: string, p: Record<string, unknown>) {
+  if (!(await isHomeOwner(DB, home, p.memberId))) return { ok: false as const, error: "owner-only" };
+  const id = clampNum(p.id, 0, 1, 1e9);
+  const approve = p.approve === true ? 1 : -1;
+  await DB.prepare("UPDATE workers SET approved = ? WHERE id = ?").bind(approve, id).run();
+  return syncAll(DB, home);
+}
+
+async function requestOtp(DB: D1Database, p: Record<string, unknown>) {
+  const phone = str(p.phone, "", 40);
+  if (phone.length < 5) return { ok: false as const, error: "bad-phone" };
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  await DB.prepare(
+    `INSERT INTO otp (phone, code, expires_at, created_at) VALUES (?, ?, datetime('now','+10 minutes'), datetime('now'))
+     ON CONFLICT(phone) DO UPDATE SET code=excluded.code, expires_at=excluded.expires_at, created_at=datetime('now')`,
+  ).bind(phone, code).run();
+  return { ok: true as const, data: { sms: false, code } };
+}
+
+async function verifyOtp(DB: D1Database, home: string, p: Record<string, unknown>) {
+  const phone = str(p.phone, "", 40);
+  const code = str(p.code, "", 10);
+  const row = await DB.prepare("SELECT code FROM otp WHERE phone = ? AND expires_at > datetime('now')").bind(phone).first<{ code: string }>();
+  if (!row || row.code !== code) return { ok: false as const, error: "bad-otp" };
+  await DB.prepare("UPDATE workers SET phone_verified = 1 WHERE owner_home = ? AND phone = ?").bind(home, phone).run();
+  await DB.prepare("DELETE FROM otp WHERE phone = ?").bind(phone).run();
   return syncAll(DB, home);
 }
 

@@ -7,7 +7,7 @@ export type Lang =
 export type Cat =
   | "meal" | "medicine" | "childcare" | "exercise" | "family" | "break" | "custom";
 
-export interface Member { id: number; home_id: string; name: string; color: string; }
+export interface Member { id: number; home_id: string; name: string; color: string; is_owner?: number; }
 
 export interface Task {
   id: string;
@@ -38,13 +38,16 @@ export interface Worker {
   experience_years: number;
   bio: string;
   video_url: string;
+  photo: string;
   status: "available" | "busy" | "offline";
   availability: "now" | "today" | "week";
   rate: string;
   jobs_done: number;
   created_at: string;
-  rating: number;      // computed
-  review_count: number; // computed
+  approved: number;      // 0 pending | 1 approved | -1 rejected
+  phone_verified: number; // 0 | 1
+  rating: number;
+  review_count: number;
 }
 
 export interface Review { id: number; worker_id: number; by_name: string; rating: number; text: string; at: string; }
@@ -91,6 +94,7 @@ export interface HomeData {
   mind_log: MindLog[];
   subscription: Subscription | null;
   ads: Ad[];
+  pending_workers: Worker[];
   my_workers: Worker[];
   account_email: string | null;
 }

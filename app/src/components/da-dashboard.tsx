@@ -109,27 +109,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* quick add */}
-      <div className="card card-soft mt3">
-        <div className="row">
-          <button className="icon-btn" onClick={startVoice} style={listening ? { background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" } : undefined} title={t("speak")}>
-            <Ic name="mic" />
-          </button>
-          <input
-            id="da-quickadd" className="input flex1" placeholder={t("add_task")} value={qtitle}
-            onChange={(e) => setQtitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") quickAdd(); }}
-          />
-          <input className="input" type="time" value={qtime} onChange={(e) => setQtime(e.target.value)} style={{ width: 110 }} aria-label={t("time")} />
-          <button className="btn btn-primary" onClick={quickAdd}><Ic name="plus" /> {t("add")}</button>
-        </div>
-        <div className="row mt1">
-          {CATS.slice(0, 6).map((c) => (
-            <button key={c.id} className="chip" aria-pressed={qcat === c.id} onClick={() => setQcat(c.id)}>{t(`cat_${c.id}`)}</button>
-          ))}
-        </div>
-      </div>
-
       {/* selected day tasks */}
       <div className="row-b mt3">
         <h2 className="h-sec">{sel === today ? t("plan_today") : fmtShort(sel, lang)}</h2>

@@ -2551,6 +2551,11 @@ const EXTRA_D: Partial<Record<Lang, Record<string, string>>> = {
     trade_electric: "Electricity", trade_plumb: "Plumbing", trade_clean: "Cleaning",
     trade_hand: "Handyman", trade_legal: "Legal", trade_delivery: "Delivery",
     bp_steps: "Do this now", bp_pro: "Still stuck? Call a registered worker from DayAxis.",
+    owner_badge: "Owner", guests_cap: "Members: {n} of 5", max_guests: "Maximum is 5 members per home.",
+    verify_phone: "Verify phone", otp_code: "Enter the 6-digit code", otp_sent_note: "Code delivered on this device (SMS delivery activates with the messaging provider).",
+    phone_ok: "Phone verified", phone_pending: "Phone not verified", pending_approval: "Awaiting approval",
+    pending_queue: "Pending worker requests", approve: "Approve", reject: "Reject", add_photo: "Add photo",
+    no_admin: "Only the owner can manage members and approvals.",
   },
   ru: {
     ls_silence: "Тишина", ls_rain: "Дождь", ls_soft: "Шум", ls_music: "Спокойная музыка",
@@ -2575,6 +2580,11 @@ const EXTRA_D: Partial<Record<Lang, Record<string, string>>> = {
     trade_electric: "Электричество", trade_plumb: "Сантехника", trade_clean: "Уборка и порядок",
     trade_hand: "Мастер на час", trade_legal: "Юридические вопросы", trade_delivery: "Доставка",
     bp_steps: "Сделайте сейчас", bp_pro: "Не помогло? Обратитесь к проверенному мастеру из DayAxis.",
+    owner_badge: "Глава", guests_cap: "Участников: {n} из 5", max_guests: "Максимум 5 участников на один дом.",
+    verify_phone: "Подтвердить телефон", otp_code: "Введите 6-значный код", otp_sent_note: "Код показан на этом устройстве (SMS-доставка включится с подключением провайдера сообщений).",
+    phone_ok: "Телефон подтверждён", phone_pending: "Телефон не подтверждён", pending_approval: "Ожидает проверки",
+    pending_queue: "Заявки мастеров", approve: "Одобрить", reject: "Отклонить", add_photo: "Добавить фото",
+    no_admin: "Управлять участниками и проверками может только глава.",
   },
   hi: {
     ls_silence: "शांति", ls_rain: "बारिश", ls_soft: "मुलायम शोर", ls_music: "शांत संगीत",
