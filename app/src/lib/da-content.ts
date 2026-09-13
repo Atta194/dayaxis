@@ -476,7 +476,7 @@ const D: Record<Lang, Dict> = {
 };
 
 export const t = (lang: Lang, key: string): string =>
-  D[lang][key] ?? MIND_D[lang]?.[key] ?? CAT_D[lang]?.[key] ?? CAT_D.en[key] ?? MIND_D.en[key] ?? D.en[key] ?? key;
+  D[lang][key] ?? MIND_D[lang]?.[key] ?? CAT_D[lang]?.[key] ?? EXTRA_D[lang]?.[key] ?? CAT_D.en[key] ?? MIND_D.en[key] ?? EXTRA_D.en[key] ?? D.en[key] ?? key;
 
 /* category + helper labels (shared by dashboard, task modal, assistant) */
 const CAT_D: Record<Lang, Record<string, string>> = {
@@ -925,5 +925,314 @@ const MIND_D: Record<Lang, Record<string, string>> = {
     wind1: "إيقاف الشاشات قبل 30 دقيقة", wind2: "اخفض الإضاءة", wind3: "غرفة باردة مظلمة هادئة",
     wind4: "لا كافيين بعد الغداء", wind5: "نفس الموعد كل ليلة",
     mind_tonight: "الليلة", mind_times: "جلسات",
+  },
+};
+
+/* ============================= listen library ============================= */
+export interface ListenItem {
+  id: string;
+  kind: "noise" | "music" | "speech";
+  key: string;
+}
+
+export const LISTEN: ListenItem[] = [
+  { id: "silence", kind: "noise", key: "ls_silence" },
+  { id: "rain", kind: "noise", key: "ls_rain" },
+  { id: "soft", kind: "noise", key: "ls_soft" },
+  { id: "music", kind: "music", key: "ls_music" },
+  { id: "poem", kind: "speech", key: "ls_poem" },
+  { id: "theme", kind: "speech", key: "ls_theme" },
+  { id: "story", kind: "speech", key: "ls_story" },
+  { id: "motivation", kind: "speech", key: "ls_motivation" },
+  { id: "belief", kind: "speech", key: "ls_belief" },
+  { id: "strength", kind: "speech", key: "ls_strength" },
+];
+
+/* real spoken content: EN + RU, other languages fall back to EN */
+export const LISTEN_TEXT: Record<string, Partial<Record<Lang, string>>> = {
+  poem: {
+    en: "Softly falls the evening now, all the deeds of day are done. Breathe the quiet, lay it down, tomorrow brings the sun.",
+    ru: "Вечер мягко опускается, все дела уходят в тень. Вдохни покой и отпусти - утро принесёт свой день.",
+  },
+  theme: {
+    en: "Close your eyes. You are at a still lake at dawn. Mist rests on the water, and nothing here needs an answer. You can stay as long as you like.",
+    ru: "Закрой глаза. Ты на тихом озере на рассвете. Туман лежит на воде, и здесь ничто не требует ответа. Оставайся, сколько хочешь.",
+  },
+  story: {
+    en: "A carpenter was asked how he cut a huge trunk so precisely. He said: I measure twice, cut once - and if it breaks, I learn something new. Today, whatever comes, measure twice before you decide. The wood always teaches. And you are the carpenter of this day.",
+    ru: "Столяра спросили, как он так точно распиливает ствол. Он ответил: отмеряю дважды, режу один раз - а если сломаю, значит, узнал что-то новое. Сегодня, что бы ни случилось, отмеряй дважды, прежде чем решать. Дерево всегда учит. А ты - мастер этого дня.",
+  },
+  motivation: {
+    en: "You do not need the perfect hour. You need the next five minutes, and the five after that. Starting small still moves the mountain. You have started before. You can start again. Now.",
+    ru: "Тебе не нужен идеальный час. Нужны следующие пять минут, а потом ещё пять. Маленький шаг тоже двигает гору. Ты уже начинал - сможешь снова. Сейчас.",
+  },
+  belief: {
+    en: "Whatever you carry today, it does not define you. You are still here, still trying, still growing. Hold that quietly, like a stone in your pocket. It is enough.",
+    ru: "Что бы ты ни нёс сегодня, это не определяет тебя. Ты здесь, ты стараешься, ты растёшь. Подержи это тихо, как камешек в кармане. Этого достаточно.",
+  },
+  strength: {
+    en: "Feel your feet on the ground, your back upright. Every breath in is strength arriving, every breath out is heaviness leaving. You have survived every hard day so far. This one will not break the streak.",
+    ru: "Почувствуй ноги на земле, спину прямой. Каждый вдох - прибывающая сила, каждый выдох - уходящая усталость. Ты пережил каждый трудный день до этого. Этот не станет исключением.",
+  },
+};
+
+export const LISTEN_TEXT_KEY: Record<string, (lang: Lang) => string> = {
+  poem: (l) => LISTEN_TEXT.poem[l] ?? LISTEN_TEXT.poem.en ?? "",
+  theme: (l) => LISTEN_TEXT.theme[l] ?? LISTEN_TEXT.theme.en ?? "",
+  story: (l) => LISTEN_TEXT.story[l] ?? LISTEN_TEXT.story.en ?? "",
+  motivation: (l) => LISTEN_TEXT.motivation[l] ?? LISTEN_TEXT.motivation.en ?? "",
+  belief: (l) => LISTEN_TEXT.belief[l] ?? LISTEN_TEXT.belief.en ?? "",
+  strength: (l) => LISTEN_TEXT.strength[l] ?? LISTEN_TEXT.strength.en ?? "",
+};
+
+/* ============================= emergency regions ============================= */
+export interface Region {
+  code: string;
+  label: string;
+  sos: string;
+  med: string;
+  pol: string;
+  fire: string;
+}
+
+export const REGIONS: Region[] = [
+  { code: "US", label: "United States", sos: "911", med: "911", pol: "911", fire: "911" },
+  { code: "CA", label: "Canada", sos: "911", med: "911", pol: "911", fire: "911" },
+  { code: "GB", label: "United Kingdom", sos: "999", med: "999", pol: "999", fire: "999" },
+  { code: "EU", label: "European Union", sos: "112", med: "112", pol: "112", fire: "112" },
+  { code: "DE", label: "Germany", sos: "112", med: "112", pol: "110", fire: "112" },
+  { code: "FR", label: "France", sos: "112", med: "15", pol: "17", fire: "18" },
+  { code: "ES", label: "Spain", sos: "112", med: "061", pol: "091", fire: "112" },
+  { code: "IN", label: "India", sos: "112", med: "108", pol: "100", fire: "101" },
+  { code: "PK", label: "Pakistan", sos: "1122", med: "115", pol: "15", fire: "16" },
+  { code: "RU", label: "Russia", sos: "112", med: "103", pol: "102", fire: "101" },
+  { code: "KZ", label: "Kazakhstan", sos: "112", med: "103", pol: "102", fire: "101" },
+  { code: "AE", label: "United Arab Emirates", sos: "999", med: "998", pol: "999", fire: "997" },
+  { code: "SA", label: "Saudi Arabia", sos: "911", med: "997", pol: "999", fire: "998" },
+  { code: "BR", label: "Brazil", sos: "190", med: "192", pol: "190", fire: "193" },
+  { code: "AU", label: "Australia", sos: "000", med: "000", pol: "000", fire: "000" },
+  { code: "JP", label: "Japan", sos: "110", med: "119", pol: "110", fire: "119" },
+  { code: "CN", label: "China", sos: "120", med: "120", pol: "110", fire: "119" },
+  { code: "TR", label: "Turkey", sos: "112", med: "112", pol: "155", fire: "110" },
+];
+
+export function detectRegion(): string {
+  try {
+    const lang = navigator.language || "";
+    const cc = (lang.split("-")[1] || "").toUpperCase();
+    const known = new Set(REGIONS.map((r) => r.code));
+    if (known.has(cc)) return cc;
+    const langMap: Record<string, string> = { en: "US", ru: "RU", hi: "IN", ur: "PK", es: "ES", ar: "AE", de: "DE", fr: "FR", pt: "BR", zh: "CN", ja: "JP", tr: "TR" };
+    const base = (lang.split("-")[0] || "").toLowerCase();
+    if (langMap[base]) return langMap[base];
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    if (tz.includes("Almaty") || tz.includes("Qostanay")) return "KZ";
+    if (tz.includes("Moscow") || tz.includes("Yekaterinburg")) return "RU";
+    if (tz === "America/New_York" || tz.startsWith("America/")) return "US";
+  } catch { /* ignore */ }
+  return "US";
+}
+
+/* ============================= plans ============================= */
+export interface Plan { id: string; price: number; }
+export const PLANS: Plan[] = [
+  { id: "weekly", price: 1.95 },
+  { id: "monthly", price: 4.45 },
+  { id: "yearly", price: 30 },
+];
+
+/* ============================= home SOS blueprint ============================= */
+export interface BlueprintProblem { issue: string; steps: string[]; }
+export interface BlueprintSection { tradeKey: string; svg: string; problems: BlueprintProblem[]; }
+export const BLUEPRINT: BlueprintSection[] = [
+  {
+    tradeKey: "trade_electric", svg: "breaker",
+    problems: [
+      { issue: "No power in one room", steps: ["Open the breaker box and find the tripped switch", "Push it fully OFF, then fully ON", "Unplug appliances one by one; if it trips again instantly, stop and call an electrician"] },
+      { issue: "A socket feels warm or smells", steps: ["Switch that circuit OFF at the box", "Do not use the socket", "Call an electrician before the next use"] },
+    ],
+  },
+  {
+    tradeKey: "trade_plumb", svg: "pipe",
+    problems: [
+      { issue: "Leak under the sink", steps: ["Close the little angle valve under the sink", "Put a bucket under the drip and dry the cabinet", "Replace the hose, or call a plumber today"] },
+      { issue: "Blocked drain", steps: ["Remove standing water with a cup", "Pour 1/2 cup of baking soda, then boiling vinegar; wait 15 minutes", "Plunge hard; if still blocked, call a plumber"] },
+    ],
+  },
+  {
+    tradeKey: "trade_clean", svg: "spray",
+    problems: [
+      { issue: "Spill on the carpet", steps: ["Blot with paper towels - never rub", "Mild soap with cold water, blot again", "Heavy grease: cover with salt, vacuum after an hour"] },
+      { issue: "Mold in a corner", steps: ["Open the window and ventilate", "Spray vinegar or diluted bleach, wipe after 10 minutes", "Fix leaks so it does not return"] },
+    ],
+  },
+  {
+    tradeKey: "trade_hand", svg: "wrench",
+    problems: [
+      { issue: "Door hinge keeps squeaking", steps: ["Lift the pin out with a screwdriver", "Oil the pin, open and close a few times", "Tighten the screws gently, not to the max"] },
+      { issue: "A shelf fell down", steps: ["Remove the shelf and mark the holes level", "Use wall plugs that match your wall type", "Heavy items go into studs, not plaster"] },
+    ],
+  },
+  {
+    tradeKey: "trade_legal", svg: "scales",
+    problems: [
+      { issue: "A contract question", steps: ["Never sign under pressure", "Read it twice and note unclear clauses", "Ask a legal adviser, taking the contract copy with you"] },
+      { issue: "Tenant rights issue", steps: ["Save every message and receipt", "Check the tenant law for your city", "Advise with a legal adviser before replying in writing"] },
+    ],
+  },
+  {
+    tradeKey: "trade_delivery", svg: "box",
+    problems: [
+      { issue: "Package shown delivered, not here", steps: ["Check neighbours' doors and the building office", "Ask the carrier for the GPS proof photo", "Submit a claim in the app with the tracking number"] },
+      { issue: "Damaged delivery", steps: ["Film the box before opening", "Photograph the damage with the label visible", "Claim immediately with photos attached"] },
+    ],
+  },
+];
+
+/* ============================= EXTRA labels ============================= */
+const EXTRA_D: Record<Lang, Record<string, string>> = {
+  en: {
+    ls_silence: "Silence", ls_rain: "Rain", ls_soft: "Soft noise", ls_music: "Peaceful music",
+    ls_poem: "Poem", ls_theme: "Theme", ls_story: "Story", ls_motivation: "Motivation",
+    ls_belief: "Belief", ls_strength: "Strength", ls_music_note: "soft tones, no words",
+    plans_title: "Plans & pricing", plan_free_trial: "7-day free trial", plan_no_card: "no card required",
+    plan_weekly: "$1.95 / week", plan_monthly: "$4.45 / month", plan_yearly: "$30 / year (2.5 per month)",
+    plan_start_trial: "Start free trial", plan_trial_active: "Free trial", trial_days_left: "days left",
+    plan_subscribe: "Subscribe", plan_active: "Active", plan_pending: "Payment pending",
+    plan_none: "No active plan", plan_expired: "Trial ended",
+    payment_note: "The plans and prices are live. Payment opens as soon as the owner connects the payment provider in settings.",
+    sponsored: "Sponsored", sponsor_slot: "This slot is free for your sponsor - add your first ad.",
+    sponsor_title: "Sponsor ads", sponsor_note: "Ads appear at the bottom of your dashboard. You control the content and see every click.",
+    ad_title: "Ad title", ad_tagline: "One-liner", ad_link: "Target link (https://...)",
+    ad_add: "Add ad", ad_manage: "Manage ads", sponsor_stats: "clicks",
+    no_workers: "No registered workers yet",
+    no_workers_note: "Be the first and register your profile - or use the smart guide below while the list fills up.",
+    blueprint_open: "Open the Home SOS blueprint (PDF)",
+    blueprint_title: "Home SOS: what to do right now",
+    blueprint_note: "A printed, image-based guide for common household problems - keep it near the family board.",
+    preview_public: "How customers see you", create_profile_cta: "Register your public profile to appear in search",
+    trade_electric: "Electricity", trade_plumb: "Plumbing", trade_clean: "Cleaning",
+    trade_hand: "Handyman", trade_legal: "Legal", trade_delivery: "Delivery",
+    bp_steps: "Do this now", bp_pro: "Still stuck? Call a registered worker from DayAxis.",
+  },
+  ru: {
+    ls_silence: "Тишина", ls_rain: "Дождь", ls_soft: "Шум", ls_music: "Спокойная музыка",
+    ls_poem: "Стихотворение", ls_theme: "Тематический фон", ls_story: "История", ls_motivation: "Мотивация",
+    ls_belief: "Убеждение", ls_strength: "Сила", ls_music_note: "мягкие тона, без слов",
+    plans_title: "Тарифы и цены", plan_free_trial: "7 дней бесплатно", plan_no_card: "карта не нужна",
+    plan_weekly: "1.95 $ / неделя", plan_monthly: "4.45 $ / месяц", plan_yearly: "30 $ / год (2.5 $ в месяц)",
+    plan_start_trial: "Начать бесплатно", plan_trial_active: "Пробный период", trial_days_left: "дней осталось",
+    plan_subscribe: "Оформить", plan_active: "Активен", plan_pending: "Оплата ожидается",
+    plan_none: "Нет активного тарифа", plan_expired: "Пробный период закончился",
+    payment_note: "Тарифы и цены уже работают. Оплата включится, когда владелец подключит платёжного провайдера в настройках.",
+    sponsored: "Партнёрский блок", sponsor_slot: "Этот слот свободен для вашего спонсора - добавьте первое объявление.",
+    sponsor_title: "Партнёрские объявления", sponsor_note: "Объявления показываются внизу вашей панели. Вы управляете содержанием и видите каждый клик.",
+    ad_title: "Заголовок", ad_tagline: "Слоган", ad_link: "Ссылка (https://...)",
+    ad_add: "Добавить", ad_manage: "Управление", sponsor_stats: "кликов",
+    no_workers: "Пока нет зарегистрированных мастеров",
+    no_workers_note: "Станьте первым и зарегистрируйте профиль - или откройте умную памятку ниже, пока список пуст.",
+    blueprint_open: "Открыть памятку «Дом: SOS» (PDF)",
+    blueprint_title: "Дом: SOS - что делать прямо сейчас",
+    blueprint_note: "Печатная памятка с картинками для частых бытовых проблем - повесьте у семейной доски.",
+    preview_public: "Как вас видят клиенты", create_profile_cta: "Создайте публичный профиль, чтобы вас находили в поиске",
+    trade_electric: "Электричество", trade_plumb: "Сантехника", trade_clean: "Уборка и порядок",
+    trade_hand: "Мастер на час", trade_legal: "Юридические вопросы", trade_delivery: "Доставка",
+    bp_steps: "Сделайте сейчас", bp_pro: "Не помогло? Обратитесь к проверенному мастеру из DayAxis.",
+  },
+  hi: {
+    ls_silence: "शांति", ls_rain: "बारिश", ls_soft: "मुलायम शोर", ls_music: "शांत संगीत",
+    ls_poem: "कविता", ls_theme: "थीम", ls_story: "कहानी", ls_motivation: "प्रेरणा",
+    ls_belief: "विश्वास", ls_strength: "शक्ति", ls_music_note: "मुलायम धुन, बिना शब्द",
+    plans_title: "योजनाएँ", plan_free_trial: "7 दिन मुफ़्त", plan_no_card: "कार्ड ज़रूरी नहीं",
+    plan_weekly: "1.95 $ / हफ़्ता", plan_monthly: "4.45 $ / माह", plan_yearly: "30 $ / साल",
+    plan_start_trial: "मुफ़्त शुरू करें", plan_trial_active: "मुफ़्त परीक्षण", trial_days_left: "दिन बाकी",
+    plan_subscribe: "सदस्यता", plan_active: "सक्रिय", plan_pending: "भुगतान लंबित",
+    plan_none: "कोई योजना नहीं", plan_expired: "परीक्षण समाप्त",
+    payment_note: "योजनाएँ तैयार हैं। मालिक भुगतान जोड़ते ही चेकआउट खुलेगा।",
+    sponsored: "प्रायोजित", sponsor_slot: "यह स्लॉट आपके प्रायोजक के लिए खाली है।",
+    sponsor_title: "प्रायोजक विज्ञापन", sponsor_note: "विज्ञापन आपके डैशबोर्ड के नीचे दिखते हैं।",
+    ad_title: "शीर्षक", ad_tagline: "एक पंक्ति", ad_link: "लिंक (https://...)",
+    ad_add: "जोड़ें", ad_manage: "प्रबंधन", sponsor_stats: "क्लिक",
+    no_workers: "अभी कोई मिस्त्री पंजीकृत नहीं",
+    no_workers_note: "पहले बनें और प्रोफ़ाइल बनाएँ - या नीचे स्मार्ट गाइड खोलें।",
+    blueprint_open: "घर SOS गाइड खोलें (PDF)",
+    blueprint_title: "घर SOS: अभी क्या करें",
+    blueprint_note: "चित्रों वाली छपी गाइड - परिवार बोर्ड के पास रखें।",
+    preview_public: "ग्राहक आपको ऐसे देखते हैं", create_profile_cta: "खोज में आने के लिए प्रोफ़ाइल बनाएँ",
+    trade_electric: "बिजली", trade_plumb: "नलसाज़ी", trade_clean: "सफ़ाई",
+    trade_hand: "हैंडीमैन", trade_legal: "कानूनी", trade_delivery: "डिलीवरी",
+    bp_steps: "अभी करें", bp_pro: "फिर भी नहीं? DayAxis से मिस्त्री बुलाएँ।",
+  },
+  ur: {
+    ls_silence: "خاموشی", ls_rain: "بارش", ls_soft: "نرم شور", ls_music: "پرسکون موسیقی",
+    ls_poem: "نظم", ls_theme: "تھیم", ls_story: "کہانی", ls_motivation: "تحریک",
+    ls_belief: "یقین", ls_strength: "طاقت", ls_music_note: "نرم لہجے، بغیر الفاظ",
+    plans_title: "منصوبے", plan_free_trial: "7 دن مفت", plan_no_card: "کارڈ کی ضرورت نہیں",
+    plan_weekly: "1.95 $ / ہفتہ", plan_monthly: "4.45 $ / مہینہ", plan_yearly: "30 $ / سال",
+    plan_start_trial: "مفت شروع کریں", plan_trial_active: "مفت آزمائش", trial_days_left: "دن باقی",
+    plan_subscribe: "سبسکرائب", plan_active: "فعال", plan_pending: "ادائیگی زیر التوا",
+    plan_none: "کوئی منصوبہ نہیں", plan_expired: "آزمائش ختم",
+    payment_note: "منصوبے تیار ہیں۔ مالک ادائیگی جوڑتے ہی چیک آؤٹ کھلے گا۔",
+    sponsored: "اسپانسر شدہ", sponsor_slot: "یہ سلاٹ آپ کے اسپانسر کے لیے خالی ہے۔",
+    sponsor_title: "اسپانسر اشتہارات", sponsor_note: "اشتہارات آپ کے ڈیش بورڈ کے نیچے دکھتے ہیں۔",
+    ad_title: "عنوان", ad_tagline: "ایک سطر", ad_link: "لنک (https://...)",
+    ad_add: "شامل", ad_manage: "انتظام", sponsor_stats: "کلکس",
+    no_workers: "ابھی کوئی کاریگر رجسٹرڈ نہیں",
+    no_workers_note: "پہلے بنیں اور پروفائل بنائیں - یا نیچے سمارٹ گائیڈ کھولیں۔",
+    blueprint_open: "گھر SOS گائیڈ کھولیں (PDF)",
+    blueprint_title: "گھر SOS: ابھی کیا کریں",
+    blueprint_note: "تصویروں والی چھپی گائیڈ - خاندانی بورڈ کے پاس رکھیں۔",
+    preview_public: "گاہک آپ کو ایسے دیکھتے ہیں", create_profile_cta: "تلاش میں آنے کے لیے پروفائل بنائیں",
+    trade_electric: "بجلی", trade_plumb: "پلمبنگ", trade_clean: "صفائی",
+    trade_hand: "ہینڈی مین", trade_legal: "قانونی", trade_delivery: "ڈیلیوری",
+    bp_steps: "ابھی کریں", bp_pro: "پھر بھی نہیں؟ DayAxis سے کاریگر بلائیں۔",
+  },
+  es: {
+    ls_silence: "Silencio", ls_rain: "Lluvia", ls_soft: "Ruido suave", ls_music: "Música tranquila",
+    ls_poem: "Poema", ls_theme: "Tema", ls_story: "Historia", ls_motivation: "Motivación",
+    ls_belief: "Creencia", ls_strength: "Fuerza", ls_music_note: "tonos suaves, sin palabras",
+    plans_title: "Planes y precios", plan_free_trial: "Prueba gratis 7 días", plan_no_card: "sin tarjeta",
+    plan_weekly: "1.95 $ / semana", plan_monthly: "4.45 $ / mes", plan_yearly: "30 $ / año",
+    plan_start_trial: "Empezar gratis", plan_trial_active: "Prueba gratis", trial_days_left: "días restantes",
+    plan_subscribe: "Suscribirse", plan_active: "Activo", plan_pending: "Pago pendiente",
+    plan_none: "Sin plan activo", plan_expired: "Prueba terminada",
+    payment_note: "Los planes ya están activos. El cobro se abre al conectar el proveedor en ajustes.",
+    sponsored: "Patrocinado", sponsor_slot: "Este espacio está libre para tu patrocinador.",
+    sponsor_title: "Anuncios patrocinados", sponsor_note: "Los anuncios aparecen abajo en tu panel. Tú controlas el contenido.",
+    ad_title: "Título", ad_tagline: "Frase", ad_link: "Enlace (https://...)",
+    ad_add: "Añadir", ad_manage: "Gestionar", sponsor_stats: "clics",
+    no_workers: "Aún no hay profesionales registrados",
+    no_workers_note: "Sé el primero y registra tu perfil - o abre la guía inteligente de abajo.",
+    blueprint_open: "Abrir la guía SOS del hogar (PDF)",
+    blueprint_title: "Hogar SOS: qué hacer ahora",
+    blueprint_note: "Guía impresa con imágenes - guárdala cerca de la pizarra familiar.",
+    preview_public: "Cómo te ven los clientes", create_profile_cta: "Registra tu perfil público para aparecer en la búsqueda",
+    trade_electric: "Electricidad", trade_plumb: "Fontanería", trade_clean: "Limpieza",
+    trade_hand: "Manitas", trade_legal: "Legal", trade_delivery: "Entrega",
+    bp_steps: "Hazlo ahora", bp_pro: "¿Aún atascado? Contacta a un profesional de DayAxis.",
+  },
+  ar: {
+    ls_silence: "صمت", ls_rain: "مطر", ls_soft: "ضوضاء ناعمة", ls_music: "موسيقى هادئة",
+    ls_poem: "قصيدة", ls_theme: "موضوع", ls_story: "قصة", ls_motivation: "تحفيز",
+    ls_belief: "إيمان", ls_strength: "قوة", ls_music_note: "نغمات ناعمة بلا كلمات",
+    plans_title: "الخطط والأسعار", plan_free_trial: "تجربة مجانية 7 أيام", plan_no_card: "بدون بطاقة",
+    plan_weekly: "1.95 $ / أسبوع", plan_monthly: "4.45 $ / شهر", plan_yearly: "30 $ / سنة",
+    plan_start_trial: "ابدأ مجاناً", plan_trial_active: "تجربة مجانية", trial_days_left: "أيام متبقية",
+    plan_subscribe: "اشترك", plan_active: "نشط", plan_pending: "دفع قيد الانتظار",
+    plan_none: "لا خطة نشطة", plan_expired: "انتهت التجربة",
+    payment_note: "الخطط جاهزة. يفتح الدفع عند ربط المزود في الإعدادات.",
+    sponsored: "مُموَّل", sponsor_slot: "هذه المساحة خالية لراعيكم.",
+    sponsor_title: "إعلانات الرعاة", sponsor_note: "تظهر الإعلانات أسفل لوحتكم. أنتم تتحكمون بالمحتوى.",
+    ad_title: "العنوان", ad_tagline: "سطر واحد", ad_link: "الرابط (https://...)",
+    ad_add: "إضافة", ad_manage: "إدارة", sponsor_stats: "نقرات",
+    no_workers: "لا حرفيون مسجلون بعد",
+    no_workers_note: "كن الأول وسجّل ملفك - أو افتح الدليل الذكي أدناه.",
+    blueprint_open: "افتح دليل SOS المنزلي (PDF)",
+    blueprint_title: "المنزل SOS: ماذا تفعل الآن",
+    blueprint_note: "دليل مطبوع بالصور - احفظه قرب لوحة العائلة.",
+    preview_public: "كيف يراك العملاء", create_profile_cta: "سجّل ملفك العام لتظهر في البحث",
+    trade_electric: "كهرباء", trade_plumb: "سباكة", trade_clean: "تنظيف",
+    trade_hand: "حرفي منزلي", trade_legal: "قانوني", trade_delivery: "توصيل",
+    bp_steps: "افعلها الآن", bp_pro: "لا يزال عالقاً؟ استعن بحرفي من DayAxis.",
   },
 };

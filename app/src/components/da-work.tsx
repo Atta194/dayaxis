@@ -7,7 +7,7 @@ import { Avatar, Ic, Modal, Stars } from "./da-ui";
 import type { Worker } from "../lib/da-types";
 
 export default function Work() {
-  const { data, act, t, toast, memberId } = useCtx();
+  const { data, act, t, toast, memberId, lang } = useCtx();
   const [tab, setTab] = useState<"find" | "mine">("find");
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"best" | "exp" | "jobs">("best");
@@ -62,7 +62,20 @@ export default function Work() {
           <div className={`grid mt3${mode === "grid" ? " g3" : ""}`} style={mode === "list" ? { gap: 10 } : undefined}>
             {workers.map((w) => <WorkerCard key={w.id} w={w} />)}
           </div>
-          {workers.length === 0 ? (
+          {data.workers.length === 0 ? (
+            <div className="card mt3" style={{ textAlign: "center", padding: "28px 18px" }}>
+              <Ic name="wrench" size={30} />
+              <h3 className="mt2" style={{ fontSize: 17 }}>{t("no_workers")}</h3>
+              <p className="muted small mt1" style={{ maxWidth: 460, margin: "8px auto 0" }}>{t("no_workers_note")}</p>
+              <button
+                className="btn btn-accent mt3"
+                onClick={() => void import("../lib/da-blueprint").then((m) => m.printBlueprint(lang, t))}
+              >
+                <Ic name="file" /> {t("blueprint_open")}
+              </button>
+              <p className="small muted mt2" style={{ maxWidth: 460, margin: "12px auto 0" }}>{t("blueprint_note")}</p>
+            </div>
+          ) : workers.length === 0 ? (
             <div className="card mt3" style={{ textAlign: "center", padding: 30 }}><p className="muted">{t("none_match")}</p></div>
           ) : null}
         </>
@@ -73,7 +86,7 @@ export default function Work() {
   );
 }
 
-function WorkerCard({ w }: { w: Worker }) {
+export function WorkerCard({ w }: { w: Worker }) {
   const { data, act, t, toast, memberId } = useCtx();
   const [showReviews, setShowReviews] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -168,6 +181,7 @@ function MyProfile({ worker, by }: { worker: Worker | null; by: string }) {
       <div className="card mt3" style={{ maxWidth: 720 }}>
         <h3 className="h-sec">{t("register_worker")}</h3>
         <p className="muted small mt1">{t("logged_as")}: <b>{by}</b></p>
+        <p className="small muted mt2" style={{ color: "var(--brand)", fontWeight: 700 }}>{t("create_profile_cta")}</p>
         <WorkerForm f={f} set={set} t={t} save={save} isNew />
       </div>
     );
@@ -175,6 +189,11 @@ function MyProfile({ worker, by }: { worker: Worker | null; by: string }) {
 
   return (
     <div className="mt3" style={{ display: "grid", gap: 14 }}>
+      <div className="card">
+        <h3 className="h-sec" style={{ fontSize: 15.5 }}>{t("preview_public")}</h3>
+        <p className="small muted mt1">{t("create_profile_cta")}</p>
+        <div className="mt2"><WorkerCard w={worker} /></div>
+      </div>
       <div className="card">
         <div className="row-b">
           <h3 className="h-sec">{t("edit_profile")}</h3>

@@ -4,8 +4,7 @@ import { z } from "zod";
 import type { D1Database } from "@cloudflare/workers-types";
 
 import { bindings } from "../bindings.server";
-import { SEED_REVIEWS, SEED_WORKERS } from "../da-content";
-import type { Cat, Feedback, HomeData, Member, MindLog, Review, Task, Worker } from "../da-types";
+import type { Ad, Cat, Feedback, HomeData, Member, MindLog, Review, Subscription, Task, Worker } from "../da-types";
 
 const HOME_RE = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -71,6 +70,11 @@ export const da = createServerFn({ method: "POST" })
         case "feedback_add": return await feedbackAdd(DB, home, p);
         case "mind_add": return await mindAdd(DB, home, p);
         case "mind_delete": return await mindDelete(DB, home, p);
+        case "plan_start_trial": return await startTrial(DB, home);
+        case "plan_subscribe": return await subscribePlan(DB, home, p);
+        case "ad_add": return await adAdd(DB, home, p);
+        case "ad_delete": return await adDelete(DB, home, p);
+        case "ad_click": return await adClick(DB, p);
         default: return { ok: false as const, error: "unknown-op" };
       }
     } catch (e) {
@@ -79,23 +83,6 @@ export const da = createServerFn({ method: "POST" })
   });
 
 /* ---------------- helpers ---------------- */
-
-async function seedWorkers(DB: D1Database): Promise<void> {
-  const c = await DB.prepare("SELECT COUNT(*) AS n FROM workers").first<{ n: number }>();
-  if (c && c.n! > 0) return;
-  const insW = DB.prepare(
-    `INSERT INTO workers (owner_home, name, trade, location, phone, email, experience_years, bio, video_url, status, availability, rate, jobs_done) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-  );
-  for (const w of SEED_WORKERS) {
-    await insW.bind(null, w.name, w.trade, w.location, w.phone, w.email, w.experience_years, w.bio, w.video_url, w.status, w.availability, w.rate, w.jobs_done).run();
-  }
-  const insR = DB.prepare(
-    `INSERT INTO reviews (worker_id, home_id, by_name, rating, text) VALUES (?,?,?,?,?)`,
-  );
-  for (const r of SEED_REVIEWS) {
-    await insR.bind(r.worker_i + 1, "seed", r.by, r.rating, r.text).run();
-  }
-}
 
 async function workersWithReviews(DB: D1Database): Promise<{ workers: Worker[]; reviews: Review[] }> {
   const [ws, rs] = await Promise.all([
@@ -119,8 +106,7 @@ async function workersWithReviews(DB: D1Database): Promise<{ workers: Worker[]; 
 
 async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: HomeData }> {
   await DB.prepare("INSERT OR IGNORE INTO homes (id) VALUES (?)").bind(home).run();
-  await seedWorkers(DB);
-  const [m, t, c, f, a, ww, mind] = await Promise.all([
+  const [m, t, c, f, a, ww, mind, sub, ads] = await Promise.all([
     DB.prepare("SELECT * FROM members WHERE home_id = ? ORDER BY id").bind(home).all<Member>(),
     DB.prepare("SELECT * FROM tasks WHERE home_id = ? AND status IN ('active','deleted') ORDER BY created_at DESC").bind(home).all<Task>(),
     DB.prepare("SELECT * FROM completions WHERE task_id IN (SELECT id FROM tasks WHERE home_id = ?) ORDER BY on_date DESC").bind(home).all(),
@@ -128,20 +114,24 @@ async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: 
     DB.prepare("SELECT email FROM accounts WHERE home_id = ? LIMIT 1").bind(home).first<{ email: string }>(),
     workersWithReviews(DB),
     DB.prepare("SELECT * FROM mind_log WHERE home_id = ? ORDER BY id DESC LIMIT 300").bind(home).all<MindLog>(),
+    DB.prepare("SELECT * FROM subscriptions WHERE home_id = ?").bind(home).first<Subscription>(),
+    DB.prepare("SELECT * FROM ads WHERE home_id = ? AND active = 1 ORDER BY id DESC").bind(home).all<Ad>(),
   ]);
   const my = ww.workers.filter((w) => w.owner_home === home);
   return {
     ok: true,
     data: {
       home_id: home,
-      members: (m.results ?? []).map((x) => ({ ...x, checklist: undefined }) as unknown as Member),
+      members: (m.results ?? []).map((x) => ({ ...x }) as Member),
       tasks: (t.results ?? []).map((x) => ({ ...x, checklist: JSON.parse(String(x.checklist ?? "[]")) }) as Task),
       completions: (c.results ?? []).map((r) => ({ task_id: r.task_id as string, on_date: r.on_date as string, kind: (r.kind as "done" | "postponed") })),
-feedback: f.results ?? [],
+      feedback: f.results ?? [],
       mind_log: (mind.results ?? []).map((x) => ({
         id: x.id, home_id: x.home_id, kind: x.kind as "meditation" | "sleep",
         minutes: x.minutes, mood: x.mood, note: x.note, at: x.at,
       })),
+      subscription: sub ?? null,
+      ads: ads.results ?? [],
       workers: ww.workers,
       reviews: ww.reviews,
       my_workers: my,
@@ -302,6 +292,79 @@ async function mindDelete(DB: D1Database, home: string, p: Record<string, unknow
   const id = clampNum(p.id, 0, 1, 1e9);
   await DB.prepare("DELETE FROM mind_log WHERE id = ? AND home_id = ?").bind(id, home).run();
   return syncAll(DB, home);
+}
+
+/* ---------------- subscriptions & ads ---------------- */
+
+async function startTrial(DB: D1Database, home: string) {
+  await DB.prepare(
+    `INSERT INTO subscriptions (home_id, plan, status, started_at, expires_at, updated_at)
+     VALUES (?, 'trial', 'active', datetime('now'), datetime('now','+7 days'), datetime('now'))
+     ON CONFLICT(home_id) DO UPDATE SET plan='trial', status='active',
+       started_at=datetime('now'), expires_at=datetime('now','+7 days'), updated_at=datetime('now')`,
+  ).bind(home).run();
+  return syncAll(DB, home);
+}
+
+const PLAN_PRICES: Record<string, number> = { weekly: 195, monthly: 445, yearly: 3000 }; // USD cents
+
+async function subscribePlan(DB: D1Database, home: string, p: Record<string, unknown>) {
+  const plan = ["weekly", "monthly", "yearly"].includes(str(p.plan, "", 12)) ? str(p.plan, "", 12) : null;
+  if (!plan) return { ok: false as const, error: "bad-plan" };
+  const { STRIPE_SECRET_KEY } = bindings();
+  if (!STRIPE_SECRET_KEY) {
+    return {
+      ok: false as const,
+      error: "payment-not-configured",
+      data: { message: "Payments are ready to connect - add the Stripe key in Settings and checkout will open here automatically." },
+    };
+  }
+  const origin = typeof p.origin === "string" && /^https:\/\//.test(p.origin) ? p.origin : "https://dayaxis.higgsfield.app";
+  const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      mode: "payment",
+      "line_items[0][quantity]": "1",
+      "line_items[0][price_data][currency]": "usd",
+      "line_items[0][price_data][unit_amount]": String(PLAN_PRICES[plan]),
+      "line_items[0][price_data][product_data][name]": `DayAxis - ${plan} plan`,
+      success_url: `${origin}/?checkout=success`,
+      cancel_url: `${origin}/?checkout=cancel`,
+    }).toString(),
+  });
+  const json = (await res.json()) as { url?: string; error?: { message?: string } };
+  if (!res.ok || !json.url) {
+    return { ok: false as const, error: "stripe-error", data: { message: json.error?.message ?? "Checkout could not be created." } };
+  }
+  await DB.prepare(
+    `INSERT INTO subscriptions (home_id, plan, status, started_at, updated_at)
+     VALUES (?, ?, 'pending', datetime('now'), datetime('now'))
+     ON CONFLICT(home_id) DO UPDATE SET plan=excluded.plan, status='pending', updated_at=datetime('now')`,
+  ).bind(home, plan).run();
+  return { ok: true as const, data: { url: json.url, plan } };
+}
+
+async function adAdd(DB: D1Database, home: string, p: Record<string, unknown>) {
+  const title = str(p.title, "Sponsor", 80) || "Sponsor";
+  const tagline = str(p.tagline, "", 160);
+  const link = str(p.link, "", 500);
+  if (!/^https?:\/\//.test(link)) return { ok: false as const, error: "bad-link" };
+  await DB.prepare("INSERT INTO ads (home_id, title, tagline, link) VALUES (?,?,?,?)")
+    .bind(home, title, tagline, link).run();
+  return syncAll(DB, home);
+}
+
+async function adDelete(DB: D1Database, home: string, p: Record<string, unknown>) {
+  const id = clampNum(p.id, 0, 1, 1e9);
+  await DB.prepare("DELETE FROM ads WHERE id = ? AND home_id = ?").bind(id, home).run();
+  return syncAll(DB, home);
+}
+
+async function adClick(DB: D1Database, p: Record<string, unknown>) {
+  const id = clampNum(p.id, 0, 1, 1e9);
+  await DB.prepare("UPDATE ads SET clicks = clicks + 1 WHERE id = ?").bind(id).run();
+  return { ok: true as const };
 }
 
 /* ---------------- accounts ---------------- */

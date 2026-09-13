@@ -10,7 +10,7 @@ import { addDays, fmtShort, occStatus, speechInput, tasksForDate, todayKey } fro
 const WD = ["S", "M", "T", "W", "T", "F", "S"];
 
 export default function Dashboard() {
-  const { data, act, t, lang, toast, memberId, viewMode } = useCtx();
+  const { data, act, t, lang, toast, memberId, viewMode, setView } = useCtx();
   const today = todayKey();
   const [sel, setSel] = useState(today);
   const [adding, setAdding] = useState(false);
@@ -151,6 +151,40 @@ export default function Dashboard() {
       </div>
 
       {adding ? <TaskModal onClose={() => setAdding(false)} presetDate={today} /> : null}
+
+      {/* sponsored slot */}
+      <div className="mt3" style={{ borderTop: "1px solid var(--line)", paddingTop: 14 }}>
+        <span className="small" style={{ fontWeight: 700, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {t("sponsored")}
+        </span>
+        {data.ads.length === 0 ? (
+          <div
+            className="card card-soft mt1"
+            style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between", padding: "12px 16px", cursor: "pointer" }}
+            onClick={() => setView("me")}
+            role="button"
+          >
+            <span className="small muted">{t("sponsor_slot")}</span>
+            <button className="btn btn-sm"><Ic name="plus" size={14} /> {t("ad_add")}</button>
+          </div>
+        ) : (
+          <div className="grid mt1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+            {data.ads.map((ad) => (
+              <a
+                key={ad.id}
+                className="card card-soft"
+                href={ad.link} target="_blank" rel="noreferrer"
+                onClick={() => void act.clickAd(ad.id)}
+                style={{ textDecoration: "none", color: "inherit", display: "grid", gap: 3, padding: "12px 16px" }}
+              >
+                <b style={{ fontSize: 14 }}>{ad.title}</b>
+                {ad.tagline ? <span className="small muted">{ad.tagline}</span> : null}
+                <span className="small" style={{ color: "var(--brand)" }}>{ad.link.replace(/^https?:\/\//, "")}</span>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

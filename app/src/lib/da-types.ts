@@ -57,6 +57,26 @@ export interface MindLog {
   at: string;
 }
 
+export interface Subscription {
+  home_id: string;
+  plan: "none" | "trial" | "weekly" | "monthly" | "yearly";
+  status: "none" | "active" | "expired";
+  started_at: string | null;
+  expires_at: string | null;
+}
+
+export interface Ad {
+  id: number;
+  home_id: string;
+  title: string;
+  tagline: string;
+  link: string;
+  active: number;
+  views: number;
+  clicks: number;
+  created_at: string;
+}
+
 export interface HomeData {
   home_id: string;
   members: Member[];
@@ -66,6 +86,8 @@ export interface HomeData {
   reviews: Review[];
   feedback: Feedback[];
   mind_log: MindLog[];
+  subscription: Subscription | null;
+  ads: Ad[];
   my_workers: Worker[];
   account_email: string | null;
 }
@@ -164,6 +186,7 @@ export const LS = {
   bed: "da.bed",         // bedtime goal HH:MM
   wake: "da.wake",       // wake goal HH:MM
   wind: "da.wind",       // wind-down checklist [ids]
+  region: "da.region",   // emergency region override, e.g. "US"
 };
 
 export function lsGet(key: string, fallback = ""): string {

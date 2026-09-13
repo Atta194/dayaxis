@@ -24,6 +24,7 @@ type AppEnv = {
   CONTAINER?: DurableObjectNamespace;
   HF_ENV?: string;
   APP_SLUG?: string;
+  STRIPE_SECRET_KEY?: string;
 };
 
 export function bindings(): AppEnv {

@@ -1,10 +1,10 @@
 /* DayAxis - Assist view: lightbulb smart help, photo scan (OCR), emergency, tips. */
 import { useState } from "react";
 
-import { EMERGENCY, TIPS, smartReply } from "../lib/da-content";
+import { REGIONS, TIPS, detectRegion, smartReply } from "../lib/da-content";
 import { useCtx } from "./da-ctx";
 import { Ic } from "./da-ui";
-import { speechInput } from "../lib/da-types";
+import { LS, lsGet, lsSet, speechInput } from "../lib/da-types";
 
 export default function Assist() {
   const { t, lang, toast } = useCtx();
@@ -14,6 +14,11 @@ export default function Assist() {
   const [scanning, setScanning] = useState(false);
   const [recog, setRecog] = useState("");
   const [catFilter, setCatFilter] = useState<string>("all");
+  const [region, setRegion] = useState<string>(() => {
+    try { return lsGet(LS.region) || detectRegion(); } catch { return "US"; }
+  });
+  const setRegionV = (code: string) => { setRegion(code); lsSet(LS.region, code); };
+  const rs = REGIONS.find((r) => r.code === region) ?? REGIONS[0];
   const [listening, setListening] = useState(false);
 
   const ask = (text: string) => {
@@ -105,16 +110,20 @@ export default function Assist() {
 
       {/* emergency */}
       <div className="mt4">
-        <h2 className="h-sec"><Ic name="alert" /> {t("emergency")}</h2>
-        <p className="small muted mt1">{t("emergency_dial")}</p>
+        <div className="row-b">
+          <div>
+            <h2 className="h-sec"><Ic name="alert" /> {t("emergency")}</h2>
+            <p className="small muted mt1">{t("emergency_dial")}</p>
+          </div>
+          <select className="select" style={{ width: 235 }} value={region} onChange={(e) => setRegionV(e.target.value)} aria-label="Region">
+            {REGIONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+          </select>
+        </div>
         <div className="emergency mt2">
-          {EMERGENCY.map((e) => (
-            <a key={e.key} className={e.cls} href={`tel:${e.num}`}>
-              <Ic name={e.key === "sos" ? "alert" : e.key === "med" ? "heart" : e.key === "police" ? "shield" : "alert"} />
-              {e.key === "sos" ? t("sos") : e.key === "med" ? t("med") : e.key === "police" ? t("police") : t("fire")}
-              <span className="tnum">{e.num}</span>
-            </a>
-          ))}
+          <a className="sos" href={`tel:${rs.sos}`}><Ic name="alert" /><b>{t("sos")}</b><span className="tnum">{rs.sos}</span></a>
+          <a className="med" href={`tel:${rs.med}`}><Ic name="heart" /><b>{t("med")}</b><span className="tnum">{rs.med}</span></a>
+          <a className="police" href={`tel:${rs.pol}`}><Ic name="shield" /><b>{t("police")}</b><span className="tnum">{rs.pol}</span></a>
+          <a className="fire" href={`tel:${rs.fire}`}><Ic name="alert" /><b>{t("fire")}</b><span className="tnum">{rs.fire}</span></a>
         </div>
         <div className="row mt2">
           <a className="btn" href="mailto:?subject=DayAxis%20quick%20message&body="><Ic name="mail" /> {t("quick_email")}</a>

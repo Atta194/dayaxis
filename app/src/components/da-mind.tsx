@@ -1,10 +1,10 @@
 /* DayAxis - Mind view: guided meditation sessions + sleep tracker. */
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { MIND_SESSIONS, SLEEP_TIPS, WIND_IDS } from "../lib/da-content";
+import { LISTEN, LISTEN_TEXT_KEY, MIND_SESSIONS, SLEEP_TIPS, WIND_IDS } from "../lib/da-content";
 import type { MindSession } from "../lib/da-content";
 import { LS, beep, lsGet, lsSet } from "../lib/da-types";
-import type { MindLog } from "../lib/da-types";
+import type { Lang, MindLog } from "../lib/da-types";
 import { useCtx } from "./da-ctx";
 import { Ic, Modal, Stars } from "./da-ui";
 
@@ -104,13 +104,13 @@ function IconZen({ size = 24 }: { size?: number }) {
 
 /* ---------------- meditation player ---------------- */
 function Player({ session, onClose }: { session: MindSession; onClose: () => void }) {
-  const { act, t, toast } = useCtx();
+  const { act, t, toast, lang } = useCtx();
   const total = session.mins * 60;
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(true);
   const [finished, setFinished] = useState(false);
   const [mood, setMood] = useState<number | null>(null);
-  const [noise, setNoise] = useState<"none" | "white" | "rain">("none");
+  const [listen, setListen] = useState("silence");
 
   const pattern = useMemo(() => {
     const p = session.pattern[0];
@@ -135,7 +135,7 @@ function Player({ session, onClose }: { session: MindSession; onClose: () => voi
     setRunning(false);
     beep("bell");
   }, [done, finished]);
-  useNoise(noise);
+  useAudio(listen, lang);
 
   const phaseSec = pattern.reduce((a, b) => a + b.sec, 0);
   const cyclePos = elapsed % phaseSec;
@@ -189,11 +189,23 @@ function Player({ session, onClose }: { session: MindSession; onClose: () => voi
             <button className="btn" onClick={() => setRunning((r) => !r)}>
               <Ic name={running ? "pause" : "play"} size={14} /> {running ? "Pause" : "Resume"}
             </button>
-            {(["none", "white", "rain"] as const).map((n) => (
-              <button key={n} className="chip" aria-pressed={noise === n} onClick={() => setNoise(n)}>
-                {n === "none" ? t("mind_none") : n === "white" ? t("mind_pink") : t("mind_rain")}
-              </button>
-            ))}
+          </div>
+          <div className="mt2" style={{ display: "grid", gap: 6 }}>
+            <div className="row" style={{ justifyContent: "center" }}>
+              {LISTEN.map((it) => (
+                <button key={it.id} className="chip" aria-pressed={listen === it.id} onClick={() => setListen(it.id)}>
+                  {t(it.key)}
+                </button>
+              ))}
+            </div>
+            {LISTEN.find((l) => l.id === listen)?.kind === "speech" ? (
+              <p className="small muted" style={{ maxWidth: 430, margin: "0 auto", fontStyle: "italic", textAlign: "center" }}>
+                {LISTEN_TEXT_KEY[listen]?.(lang)}
+              </p>
+            ) : null}
+            {listen === "music" ? (
+              <p className="small muted" style={{ textAlign: "center" }}>{t("ls_music_note")}</p>
+            ) : null}
           </div>
         </div>
       )}
@@ -319,44 +331,72 @@ function SleepTab({ sleepLogs }: { sleepLogs: MindLog[] }) {
   );
 }
 
-/* ---------------- noise ---------------- */
-function useNoise(type: "none" | "white" | "rain") {
-  const ref = useRef<{ src: AudioBufferSourceNode; ctx: AudioContext } | null>(null);
+/* ---------------- audio: noise / music / speech ---------------- */
+function useAudio(listen: string, lang: Lang) {
+  const speechItem = LISTEN.find((l) => l.id === listen)?.kind === "speech";
   useEffect(() => {
-    if (type === "none") {
-      try { ref.current?.src.stop(); ref.current?.ctx.close(); } catch { /* ignore */ }
-      ref.current = null;
+    if (speechItem) {
+      const text = LISTEN_TEXT_KEY[listen]?.(lang);
+      if (text && "speechSynthesis" in window) {
+        const u = new SpeechSynthesisUtterance(text.slice(0, 260));
+        const map: Record<Lang, string> = { en: "en-US", ru: "ru-RU", hi: "hi-IN", ur: "ur-PK", es: "es-ES", ar: "ar-SA" };
+        u.lang = map[lang] ?? "en-US";
+        u.rate = 0.95;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      }
       return;
     }
-    let ctx: AudioContext;
-    try {
-      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    let ctx: AudioContext | null = null;
+    const nodes: { stop: () => void }[] = [];
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (listen === "rain" || listen === "soft") {
       ctx = new AC();
-    } catch {
-      return;
+      const len = ctx.sampleRate * 2;
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        if (listen === "rain") { last = (last + 0.06 * w) / 1.06; d[i] = last * 6; }
+        else { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.2; }
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.28;
+      src.connect(gain);
+      gain.connect(ctx.destination);
+      src.start();
+      nodes.push({ stop: () => { try { src.stop(); ctx?.close(); } catch { /* ignore */ } } });
     }
-    const len = ctx.sampleRate * 2;
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    let last = 0;
-    for (let i = 0; i < len; i++) {
-      const w = Math.random() * 2 - 1;
-      if (type === "white") d[i] = w * 0.14;
-      else if (type === "rain") { last = (last + 0.06 * w) / 1.06; d[i] = last * 6; }
-      else { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.2; }
+    if (listen === "music") {
+      ctx = new AC();
+      const chords = [[261.63, 329.63, 392], [220, 261.63, 329.63], [174.61, 220, 261.63], [196, 246.94, 293.66]];
+      const now = ctx.currentTime;
+      chords.forEach((ch, ci) => {
+        ch.forEach((f) => {
+          const o = ctx!.createOscillator();
+          const g = ctx!.createGain();
+          o.type = "sine";
+          o.frequency.value = f;
+          const t0 = now + ci * 8;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.linearRampToValueAtTime(0.065, t0 + 2);
+          g.gain.linearRampToValueAtTime(0.0001, t0 + 7.5);
+          o.connect(g);
+          g.connect(ctx!.destination);
+          o.start(t0);
+          o.stop(t0 + 8);
+          nodes.push({ stop: () => { try { o.stop(); } catch { /* ignore */ } } });
+        });
+      });
     }
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.loop = true;
-    const gain = ctx.createGain();
-    gain.gain.value = 0.32;
-    src.connect(gain);
-    gain.connect(ctx.destination);
-    src.start();
-    ref.current = { src, ctx };
     return () => {
-      try { src.stop(); ctx.close(); } catch { /* ignore */ }
-      ref.current = null;
+      nodes.forEach((n) => n.stop());
+      try { ctx?.close(); } catch { /* ignore */ }
     };
-  }, [type]);
+  }, [listen, lang, speechItem]);
 }

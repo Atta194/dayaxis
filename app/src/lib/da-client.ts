@@ -58,6 +58,11 @@ export interface DaAct {
   sendFeedback(rating: number, text: string): Promise<DaResult>;
   mindAdd(kind: "meditation" | "sleep", minutes: number, mood: number | null, note: string): Promise<DaResult>;
   mindDelete(id: number): Promise<DaResult>;
+  startTrial(): Promise<DaResult>;
+  subscribe(plan: string, origin: string): Promise<DaResult>;
+  addAd(title: string, tagline: string, link: string): Promise<DaResult>;
+  deleteAd(id: number): Promise<DaResult>;
+  clickAd(id: number): Promise<DaResult>;
   signup(email: string, passcode: string): Promise<DaResult>;
   login(email: string, passcode: string): Promise<DaResult>;
 }
@@ -157,6 +162,11 @@ export function useDa() {
       sendFeedback: async (rating, text) => call("feedback_add", { rating, text }),
       mindAdd: async (kind, minutes, mood, note) => call("mind_add", { kind, minutes, mood, note }),
       mindDelete: async (id) => call("mind_delete", { id }),
+      startTrial: async () => call("plan_start_trial", {}),
+      subscribe: async (plan, origin) => call("plan_subscribe", { plan, origin }),
+      addAd: async (title, tagline, link) => call("ad_add", { title, tagline, link }),
+      deleteAd: async (id) => call("ad_delete", { id }),
+      clickAd: async (id) => call("ad_click", { id }),
       signup: async (email, passcode) => {
         const res = await call("account_signup", { email, passcode });
         const tkn = res.ok && res.data && "token" in res.data ? String(res.data.token) : "";

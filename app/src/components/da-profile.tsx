@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 
 import { LANGS } from "../lib/da-content";
+import { PlansPanel, SponsorPanel } from "./da-plans";
 import { useCtx } from "./da-ctx";
 import { Avatar, Ic, Stars } from "./da-ui";
 import { LS, lsGet, lsSet } from "../lib/da-types";
@@ -96,6 +97,9 @@ export default function Profile() {
           ))}
         </div>
       </div>
+
+      <PlansPanel />
+      <SponsorPanel />
 
       <div className="grid mt2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", alignItems: "start" }}>
         <div className="card">
