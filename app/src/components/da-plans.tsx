@@ -2,6 +2,7 @@
 import { useState } from "react";
 
 import { PLANS } from "../lib/da-content";
+import { isDaError } from "../lib/da-client";
 import { useCtx } from "./da-ctx";
 import { Ic } from "./da-ui";
 
@@ -21,14 +22,19 @@ export function PlansPanel() {
   const subscribe = async (id: string) => {
     try {
       const res = await act.subscribe(id, window.location.origin);
-      if (res.ok && res.data && "url" in res.data && typeof res.data.url === "string") {
-        window.location.href = res.data.url;
+      const url =
+        !isDaError(res) && res.data && typeof (res.data as { url?: unknown }).url === "string"
+          ? (res.data as { url: string }).url
+          : null;
+      if (url) {
+        window.location.href = url;
         return;
       }
-      const msg =
-        res.ok || !res.data || !("message" in res.data) || typeof res.data.message !== "string"
-          ? res.error
-          : res.data.message;
+      const msg = isDaError(res)
+        ? res.data && typeof (res.data as { message?: unknown }).message === "string"
+          ? (res.data as { message: string }).message
+          : res.error
+        : "error";
       toast(msg || "error", "warn");
     } catch {
       toast("network", "warn");

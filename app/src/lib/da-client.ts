@@ -7,7 +7,7 @@ import type { HomeData, Task } from "./da-types";
 
 export type DaResult =
   | { ok: true; data?: HomeData | Record<string, unknown> }
-  | { ok: false; error: string };
+  | { ok: false; error: string; data?: Record<string, unknown> };
 
 export function isDaError(res: DaResult): res is Extract<DaResult, { ok: false }> {
   return res.ok === false;

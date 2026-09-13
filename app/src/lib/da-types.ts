@@ -60,7 +60,7 @@ export interface MindLog {
 export interface Subscription {
   home_id: string;
   plan: "none" | "trial" | "weekly" | "monthly" | "yearly";
-  status: "none" | "active" | "expired";
+  status: "none" | "active" | "pending" | "expired";
   started_at: string | null;
   expires_at: string | null;
 }
