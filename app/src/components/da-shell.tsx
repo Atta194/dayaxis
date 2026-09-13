@@ -12,6 +12,7 @@ import Mind from "./da-mind";
 import Work from "./da-work";
 import Assist from "./da-assist";
 import Profile from "./da-profile";
+import Admin from "./da-admin";
 import { Confetti, Ic, useToasts } from "./da-ui";
 import {
   LS, lsGet, lsSet, notify, occStatus, speak, tasksForDate, todayKey,
@@ -58,6 +59,26 @@ export default function Shell() {
     };
   }, []);
   const installApp = installEvt ? () => { void installEvt.prompt(); } : null;
+
+  /* Google OAuth return: exchange ?code on the callback URL */
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      if (params.get("social") === "google" && code) {
+        window.history.replaceState({}, "", window.location.pathname);
+        void act.googleCallback(code).then((res) => {
+          if (!res.ok) {
+            const msg = res.data && "message" in res.data && typeof res.data.message === "string" ? res.data.message : res.error;
+            push(msg || "error", "warn");
+          } else {
+            push(t("welcome"), "ok");
+          }
+        });
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* theme + lang applied to <html> */
   useEffect(() => {
@@ -133,6 +154,10 @@ export default function Shell() {
   };
 
   const current = memberName(data, memberId);
+  const tabs = [
+    ...TABS,
+    ...(data.account_role === "admin" ? [{ id: "admin", icon: "shield", key: "nav_admin" }] : []),
+  ];
   const cycleMember = () => {
     const list = data.members;
     if (!list.length) return;
@@ -155,7 +180,7 @@ export default function Shell() {
           </a>
           <div className="topbar-spacer tabnav-wrap">
             <nav className="tabnav" aria-label="Main">
-              {TABS.map((tb) => (
+              {tabs.map((tb) => (
                 <button key={tb.id} className="tab" aria-selected={view === tb.id} onClick={() => setView(tb.id)}>
                   <Ic name={tb.icon} /> <span>{t(tb.key)}</span>
                 </button>
@@ -180,18 +205,25 @@ export default function Shell() {
         </header>
 
         <main className="da-main">
+          {!data.account_email ? (
+            <div className="card card-soft mt2 no-print" style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between", padding: "12px 16px" }}>
+              <span className="small">{t("signin_required")}</span>
+              <button className="btn btn-accent btn-sm" onClick={() => setView("me")}>{t("login")}</button>
+            </div>
+          ) : null}
           {view === "dash" ? <Dashboard /> : null}
           {view === "plan" ? <Planner /> : null}
           {view === "kitchen" ? <Kitchen /> : null}
           {view === "move" ? <Move /> : null}
           {view === "mind" ? <Mind /> : null}
           {view === "work" ? <Work /> : null}
+          {view === "admin" ? <Admin /> : null}
           {view === "assist" ? <Assist /> : null}
           {view === "me" ? <Profile /> : null}
         </main>
 
         <nav className="mobilenav no-print" aria-label="Main">
-          {TABS.map((tb) => (
+          {tabs.map((tb) => (
             <button key={tb.id} className="tab" aria-selected={view === tb.id} onClick={() => setView(tb.id)}>
               <Ic name={tb.icon} /> <span>{t(tb.key)}</span>
             </button>

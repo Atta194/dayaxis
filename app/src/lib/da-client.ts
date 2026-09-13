@@ -55,6 +55,12 @@ export interface DaAct {
   approveWorker(id: number, approve: boolean, memberId: number | null): Promise<DaResult>;
   requestOtp(phone: string): Promise<DaResult & { data?: { code?: string; sms?: boolean } }>;
   verifyOtp(phone: string, code: string): Promise<DaResult>;
+  changePassword(oldPass: string, newPass: string): Promise<DaResult>;
+  logout(): Promise<DaResult>;
+  adminWorkerDelete(id: number): Promise<DaResult>;
+  adminStats(): Promise<DaResult>;
+  googleStart(): Promise<DaResult>;
+  googleCallback(code: string): Promise<DaResult>;
   saveWorker(w: Record<string, unknown>): Promise<DaResult>;
   deleteWorker(id: number): Promise<DaResult>;
   setWorkerStatus(id: number, status: string, availability: string): Promise<DaResult>;
@@ -163,6 +169,23 @@ export function useDa() {
       approveWorker: async (id, approve, memberId) => call("worker_approve", { id, approve, memberId }),
       requestOtp: async (phone) => call("request_otp", { phone }),
       verifyOtp: async (phone, code) => call("verify_otp", { phone, code }),
+      changePassword: async (oldPass, newPass) => call("account_change_password", { old: oldPass, new: newPass }),
+      logout: async () => {
+        const res = await call("account_logout", {});
+        lsSet(LS.session, "");
+        void refresh();
+        return res.ok ? { ok: true as const } : res;
+      },
+      adminWorkerDelete: async (id) => call("worker_admin_delete", { id }),
+      adminStats: async () => call("admin_stats", {}),
+      googleStart: async () => call("google_auth_start", { origin: window.location.origin }),
+      googleCallback: async (code) => {
+        const res = await call("google_auth_callback", { code, origin: window.location.origin });
+        const tkn = res.ok && res.data && "token" in res.data ? String(res.data.token) : "";
+        if (tkn) lsSet(LS.session, tkn);
+        void refresh();
+        return res;
+      },
       saveWorker: async (w) => call("worker_save", { worker: w }),
       deleteWorker: async (id) => call("worker_delete", { id }),
       setWorkerStatus: async (id, status, availability) => call("worker_status", { id, status, availability }),

@@ -22,6 +22,12 @@ export default function Profile() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [showAccount, setShowAccount] = useState(data.account_email != null);
   const amOwner = memberId != null && (data.members.find((x) => x.id === memberId)?.is_owner === 1);
+  const [pwOld, setPwOld] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [phoneV, setPhoneV] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [otpSentCode, setOtpSentCode] = useState("");
+  const [phoneMode, setPhoneMode] = useState(false);
 
   const notifyOn = lsGet(LS.notify) === "1";
   const voiceOn = lsGet(LS.voiceRem) === "1";
@@ -194,30 +200,107 @@ export default function Profile() {
           ) : null}
           <p className="small muted mt2" style={{ maxWidth: 420 }}>Install DayAxis to your home screen. With a service worker on board it opens instantly and stays usable offline with your last synced data.</p>
           <div className="row-b mt3" style={{ alignItems: "center" }}>
-            <h3 className="h-sec" style={{ fontSize: 15 }}>{showAccount ? t("login") : t("signup")}</h3>
-            {data.account_email ? <span className="chip chip-tag" style={{ cursor: "default" }}>{data.account_email}</span> : null}
+            <h3 className="h-sec" style={{ fontSize: 15 }}>{t("your_account")}</h3>
+            {data.account_email ? (
+              <span className="chip chip-tag" style={{ cursor: "default" }}>
+                {data.account_email}{data.account_role === "admin" ? ` · ${t("owner_badge")}` : ""}
+              </span>
+            ) : null}
           </div>
           {data.account_email ? (
-            <button className="btn btn-danger btn-sm mt2" onClick={() => { lsSet(LS.session, ""); toast(t("logout")); setTimeout(() => window.location.reload(), 400); }}>
-              <Ic name="logout" /> {t("logout")}
-            </button>
+            <div className="mt2" style={{ display: "grid", gap: 9 }}>
+              <div className="field">
+                <label>{t("verify_phone")}</label>
+                {data.account_phone_verified === 1 ? (
+                  <span className="chip chip-tag mt1" style={{ cursor: "default", color: "var(--ok)", alignSelf: "flex-start" }}>{t("phone_ok")}</span>
+                ) : (
+                  <>
+                    <div className="row" style={{ flexWrap: "nowrap" }}>
+                      <input className="input flex1" placeholder={t("phone")} value={phoneV} onChange={(e) => setPhoneV(e.target.value)} />
+                      <button className="btn btn-soft btn-sm" onClick={async () => {
+                        const res = await act.requestOtp(phoneV.trim());
+                        const code = res.ok && res.data && typeof (res.data as { code?: unknown }).code === "string" ? (res.data as { code: string }).code : "";
+                        setOtpSentCode(code);
+                        toast(code ? t("otp_sent_note") : "network", "warn");
+                      }}>{t("verify_phone")}</button>
+                    </div>
+                    {otpSentCode ? (
+                      <>
+                        <div className="row mt1" style={{ flexWrap: "nowrap" }}>
+                          <input className="input" style={{ width: 130 }} placeholder={t("otp_code")} value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} />
+                          <button className="btn btn-primary btn-sm" onClick={async () => {
+                            const res = await act.verifyOtp(phoneV.trim(), phoneCode.trim());
+                            if (res.ok) { setPhoneCode(""); setOtpSentCode(""); toast(t("phone_ok")); }
+                            else toast(res.error === "bad-otp" ? t("otp_code") : res.error, "warn");
+                          }}><Ic name="check" size={14} /></button>
+                        </div>
+                        <p className="small muted tnum" style={{ wordBreak: "break-all" }}>Code: {otpSentCode} · {t("otp_sent_note")}</p>
+                      </>
+                    ) : null}
+                  </>
+                )}
+              </div>
+              <div className="field">
+                <label>{t("change_password")}</label>
+                <div className="row">
+                  <input className="input" style={{ width: 130 }} placeholder={t("old_pass")} type="password" value={pwOld} onChange={(e) => setPwOld(e.target.value)} />
+                  <input className="input" style={{ width: 130 }} placeholder={t("new_pass")} type="password" value={pwNew} onChange={(e) => setPwNew(e.target.value)} />
+                  <button className="btn btn-primary btn-sm" onClick={async () => {
+                    if (pwNew.length < 6) { toast(t("new_pass"), "warn"); return; }
+                    const res = await act.changePassword(pwOld, pwNew);
+                    if (res.ok) { setPwOld(""); setPwNew(""); toast(t("pref_changed")); }
+                    else toast(res.error === "wrong-credentials" ? t("old_pass") : res.error, "warn");
+                  }}><Ic name="check" size={14} /> {t("save")}</button>
+                </div>
+              </div>
+              <button className="btn btn-danger btn-sm" style={{ justifySelf: "start" }} onClick={async () => { await act.logout(); toast(t("logout")); }}>
+                <Ic name="logout" /> {t("logout")}
+              </button>
+            </div>
           ) : (
             <div className="mt2" style={{ display: "grid", gap: 9 }}>
-              <input className="input" placeholder={t("email_ph")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <div className="row">
+                <button className="chip" aria-pressed={!phoneMode} onClick={() => setPhoneMode(false)}>Gmail / Email</button>
+                <button className="chip" aria-pressed={phoneMode} onClick={() => setPhoneMode(true)}>{t("phone_signup")}</button>
+              </div>
+              {phoneMode ? (
+                <input className="input" placeholder={t("phone")} value={phoneV} onChange={(e) => setPhoneV(e.target.value)} />
+              ) : (
+                <input className="input" placeholder={t("email_ph")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              )}
               <input className="input" placeholder={t("passcode")} type="password" value={pass} onChange={(e) => setPass(e.target.value)} />
               <p className="small muted">{t("account_note")}</p>
               <div className="row">
                 <button className="btn btn-primary btn-sm" onClick={async () => {
-                  const r = email && pass.length >= 6 ? await act.signup(email, pass) : { ok: false as const, error: "short" };
+                  const digits = phoneV.replace(/\D/g, "");
+                  const ident = phoneMode ? `${digits}@phone.dayaxis` : email;
+                  const okId = phoneMode ? digits.length >= 5 : ident.trim().length > 3;
+                  const r = okId && pass.length >= 6 ? await act.signup(ident, pass) : { ok: false as const, error: "short" };
                   if (r.ok) { toast(t("welcome")); setEmail(""); setPass(""); void refresh(); }
                   else toast(r.error === "email-exists" ? "Account exists - sign in" : r.error, "warn");
                 }}>{t("signup")}</button>
                 <button className="btn btn-sm" onClick={async () => {
-                  const r = email && pass.length >= 6 ? await act.login(email, pass) : { ok: false as const, error: "short" };
+                  const digits = phoneV.replace(/\D/g, "");
+                  const ident = phoneMode ? `${digits}@phone.dayaxis` : email;
+                  const okId = phoneMode ? digits.length >= 5 : ident.trim().length > 3;
+                  const r = okId && pass.length >= 6 ? await act.login(ident, pass) : { ok: false as const, error: "short" };
                   if (r.ok) { toast(t("welcome")); setEmail(""); setPass(""); void refresh(); }
                   else toast(r.error === "wrong-credentials" ? "Wrong email or code" : r.error, "warn");
                 }}>{t("login")}</button>
               </div>
+              <button className="btn" style={{ justifySelf: "start" }} onClick={async () => {
+                const res = await act.googleStart();
+                if (res.ok && res.data && "url" in res.data && typeof res.data.url === "string") window.location.href = res.data.url;
+                else {
+                  const m = res.data && "message" in res.data && typeof res.data.message === "string" ? res.data.message : res.error;
+                  toast(m || "error", "warn");
+                }
+              }}>
+                <Ic name="globe" size={15} /> {t("continue_google")}
+              </button>
+              <button className="btn" style={{ justifySelf: "start", justifyContent: "flex-start" }} onClick={() => toast("Apple sign-in is wired - connect the Apple Services ID in Settings to enable it.", "warn")}>
+                Apple · {t("login")}
+              </button>
             </div>
           )}
         </div>

@@ -2556,6 +2556,11 @@ const EXTRA_D: Partial<Record<Lang, Record<string, string>>> = {
     phone_ok: "Phone verified", phone_pending: "Phone not verified", pending_approval: "Awaiting approval",
     pending_queue: "Pending worker requests", approve: "Approve", reject: "Reject", add_photo: "Add photo",
     no_admin: "Only the owner can manage members and approvals.",
+    nav_admin: "Admin", admin_analytics: "Live platform analytics and worker approvals.", admin_workers_ov: "Verified workers",
+    admin_denied: "Admin access requires an admin account with a verified phone.",
+    signin_required: "Sign in to add tasks and unlock personal features.", continue_google: "Continue with Google",
+    phone_signup: "Sign up with phone", change_password: "Change passcode", old_pass: "Current passcode", new_pass: "New passcode",
+    your_account: "Your account",
   },
   ru: {
     ls_silence: "Тишина", ls_rain: "Дождь", ls_soft: "Шум", ls_music: "Спокойная музыка",
@@ -2585,6 +2590,11 @@ const EXTRA_D: Partial<Record<Lang, Record<string, string>>> = {
     phone_ok: "Телефон подтверждён", phone_pending: "Телефон не подтверждён", pending_approval: "Ожидает проверки",
     pending_queue: "Заявки мастеров", approve: "Одобрить", reject: "Отклонить", add_photo: "Добавить фото",
     no_admin: "Управлять участниками и проверками может только глава.",
+    nav_admin: "Админ", admin_analytics: "Живая аналитика платформы и проверка мастеров.", admin_workers_ov: "Проверенные мастера",
+    admin_denied: "Доступ администратора требует аккаунт админа с подтверждённым телефоном.",
+    signin_required: "Войдите, чтобы добавлять задачи и пользоваться личными функциями.", continue_google: "Войти через Google",
+    phone_signup: "Регистрация по телефону", change_password: "Сменить код доступа", old_pass: "Текущий код", new_pass: "Новый код",
+    your_account: "Ваш аккаунт",
   },
   hi: {
     ls_silence: "शांति", ls_rain: "बारिश", ls_soft: "मुलायम शोर", ls_music: "शांत संगीत",

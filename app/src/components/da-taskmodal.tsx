@@ -122,6 +122,7 @@ export function TaskModal({ onClose, presetDate, preset }: {
 
   const save = () => {
     if (!title.trim()) { toast(t("title"), "warn"); return; }
+    if (!data.account_email) { toast(t("signin_required"), "warn"); return; }
     void act.updateTask({
       id: preset?.id ?? uid(),
       title: title.trim(), category: cat as typeof cat, notes,

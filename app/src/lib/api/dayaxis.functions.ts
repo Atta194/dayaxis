@@ -46,17 +46,27 @@ export const da = createServerFn({ method: "POST" })
     const { DB } = bindings();
     if (!DB) return { ok: false as const, error: "storage-unavailable" };
 
-    const home =
-      data.auth && (await DB.prepare("SELECT home_id FROM sessions WHERE token = ?").bind(data.auth).first<{ home_id: string }>())
-        ? (await DB.prepare("SELECT home_id FROM sessions WHERE token = ?").bind(data.auth).first<{ home_id: string }>())!.home_id
-        : data.home && HOME_RE.test(data.home)
-          ? data.home
-          : null;
-
-    if (data.op === "account_login" || data.op === "account_signup") {
-      return handleAccount(DB, data.op, data.payload, data.home);
+    if (data.op === "account_login" || data.op === "account_signup" || data.op === "google_auth_start" || data.op === "google_auth_callback") {
+      return handleAccount(DB, data.op, data.payload, data.home, data.auth);
     }
+
+    const sessRow = data.auth
+      ? await DB.prepare("SELECT home_id FROM sessions WHERE token = ?").bind(data.auth).first<{ home_id: string }>()
+      : null;
+    const isSession = sessRow != null;
+    const home = sessRow ? sessRow.home_id : data.home && HOME_RE.test(data.home) ? data.home : null;
     if (!home) return { ok: false as const, error: "invalid-home" };
+
+    // Personal features require a real account session - anonymous devices cannot mutate.
+    const GATED = new Set([
+      "task_save", "task_delete", "task_restore", "complete", "postpone",
+      "member_add", "member_rename", "member_delete",
+      "worker_save", "worker_delete", "worker_approve",
+      "ad_add", "ad_delete", "mind_add", "mind_delete",
+      "account_change_password",
+    ]);
+    if (GATED.has(data.op) && !isSession) return { ok: false as const, error: "auth-required" };
+
     const p = (data.payload ?? {}) as Record<string, unknown>;
 
     try {
@@ -85,6 +95,10 @@ export const da = createServerFn({ method: "POST" })
         case "ad_add": return await adAdd(DB, home, p);
         case "ad_delete": return await adDelete(DB, home, p);
         case "ad_click": return await adClick(DB, p);
+        case "account_change_password": return await changePassword(DB, home, p);
+        case "account_logout": return await logoutAccount(DB, data.auth);
+        case "admin_stats": return await adminStats(DB, home);
+        case "worker_admin_delete": return await workerAdminDelete(DB, home, p);
         default: return { ok: false as const, error: "unknown-op" };
       }
     } catch (e) {
@@ -122,7 +136,7 @@ async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: 
     DB.prepare("SELECT * FROM tasks WHERE home_id = ? AND status IN ('active','deleted') ORDER BY created_at DESC").bind(home).all<Task>(),
     DB.prepare("SELECT * FROM completions WHERE task_id IN (SELECT id FROM tasks WHERE home_id = ?) ORDER BY on_date DESC").bind(home).all(),
     DB.prepare("SELECT * FROM feedback WHERE home_id = ? ORDER BY id DESC LIMIT 200").bind(home).all<Feedback>(),
-    DB.prepare("SELECT email FROM accounts WHERE home_id = ? LIMIT 1").bind(home).first<{ email: string }>(),
+    DB.prepare("SELECT email, role, phone_verified FROM accounts WHERE home_id = ? LIMIT 1").bind(home).first<{ email: string; role: string; phone_verified: number }>(),
     workersWithReviews(DB),
     DB.prepare("SELECT * FROM mind_log WHERE home_id = ? ORDER BY id DESC LIMIT 300").bind(home).all<MindLog>(),
     DB.prepare("SELECT * FROM subscriptions WHERE home_id = ?").bind(home).first<Subscription>(),
@@ -151,6 +165,8 @@ async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: 
       reviews: ww.reviews,
       my_workers: my,
       account_email: a?.email ?? null,
+      account_role: a?.role === "admin" ? "admin" : a?.role === "user" ? "user" : null,
+      account_phone_verified: a?.phone_verified ?? 0,
     },
   };
 }
@@ -295,7 +311,7 @@ async function workerStatus(DB: D1Database, home: string, p: Record<string, unkn
 }
 
 async function workerApprove(DB: D1Database, home: string, p: Record<string, unknown>) {
-  if (!(await isHomeOwner(DB, home, p.memberId))) return { ok: false as const, error: "owner-only" };
+  if (!(await isHomeOwner(DB, home, p.memberId)) && !(await isAdminAccount(DB, home))) return { ok: false as const, error: "owner-only" };
   const id = clampNum(p.id, 0, 1, 1e9);
   const approve = p.approve === true ? 1 : -1;
   await DB.prepare("UPDATE workers SET approved = ? WHERE id = ?").bind(approve, id).run();
@@ -319,6 +335,7 @@ async function verifyOtp(DB: D1Database, home: string, p: Record<string, unknown
   const row = await DB.prepare("SELECT code FROM otp WHERE phone = ? AND expires_at > datetime('now')").bind(phone).first<{ code: string }>();
   if (!row || row.code !== code) return { ok: false as const, error: "bad-otp" };
   await DB.prepare("UPDATE workers SET phone_verified = 1 WHERE owner_home = ? AND phone = ?").bind(home, phone).run();
+  await DB.prepare("UPDATE accounts SET phone = ?, phone_verified = 1 WHERE home_id = ?").bind(phone, home).run();
   await DB.prepare("DELETE FROM otp WHERE phone = ?").bind(phone).run();
   return syncAll(DB, home);
 }
@@ -439,30 +456,146 @@ async function adClick(DB: D1Database, p: Record<string, unknown>) {
 /* ---------------- accounts ---------------- */
 
 async function handleAccount(
-  DB: D1Database, op: string, payload: unknown, home: string | undefined,
-): Promise<{ ok: true; data: { token: string; account_email: string } } | { ok: false; error: string }> {
+  DB: D1Database, op: string, payload: unknown, home: string | undefined, auth: string | undefined,
+): Promise<
+  | { ok: true; data: { token: string; account_email: string; account_role: "user" | "admin" } }
+  | { ok: true; data: { url: string } }
+  | { ok: false; error: string; data?: Record<string, unknown> }
+> {
   const p = (payload ?? {}) as Record<string, unknown>;
+
+  if (op === "google_auth_start") {
+    const { GOOGLE_CLIENT_ID } = bindings();
+    if (!GOOGLE_CLIENT_ID) {
+      return { ok: false as const, error: "google-not-configured", data: { message: "Sign in with Google is wired and ready - connect the Google OAuth client ID in Settings to enable it." } };
+    }
+    const origin = typeof p.origin === "string" && /^https:\/\//.test(p.origin) ? p.origin : "https://dayaxis.higgsfield.app";
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: `${origin}/?social=google`,
+      response_type: "code",
+      scope: "openid email profile",
+      prompt: "select_account",
+    });
+    return { ok: true as const, data: { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` } };
+  }
+
+  if (op === "google_auth_callback") {
+    const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = bindings();
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      return { ok: false as const, error: "google-not-configured", data: { message: "Google sign-in needs the OAuth client ID and secret in Settings." } };
+    }
+    const code = str(p.code, "", 500);
+    const origin = typeof p.origin === "string" && /^https:\/\//.test(p.origin) ? p.origin : "https://dayaxis.higgsfield.app";
+    const tok = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code, client_id: GOOGLE_CLIENT_ID, client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: `${origin}/?social=google`, grant_type: "authorization_code",
+      }).toString(),
+    });
+    const tokenJson = (await tok.json()) as { access_token?: string };
+    if (!tok.ok || !tokenJson.access_token) return { ok: false as const, error: "google-error" };
+    const ui = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${tokenJson.access_token}` },
+    });
+    const me = (await ui.json()) as { email?: string; name?: string };
+    const gmail = (me.email ?? "").toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gmail)) return { ok: false as const, error: "google-error" };
+    let row = await DB.prepare("SELECT home_id, role FROM accounts WHERE email = ?").bind(gmail).first<{ home_id: string; role: string }>();
+    if (!row) {
+      const found = await DB.prepare("SELECT COUNT(*) AS n FROM accounts").first<{ n: number }>();
+      const role = found && found.n! === 0 ? "admin" : "user";
+      const newHome = `da-${crypto.randomUUID()}`;
+      await DB.prepare("INSERT INTO accounts (email, home_id, passcode_hash, role) VALUES (?,?,?,?)").bind(gmail, newHome, "", role).run();
+      await DB.prepare("INSERT INTO homes (id) VALUES (?)").bind(newHome).run();
+      await DB.prepare("INSERT INTO members (home_id, name, color, is_owner) VALUES (?,?,?,1)").bind(newHome, me.name?.slice(0, 60) || "Owner", "#1E7A6B").run();
+      row = { home_id: newHome, role };
+    }
+    const token = crypto.randomUUID();
+    await DB.prepare("INSERT INTO sessions (token, home_id) VALUES (?,?)").bind(token, row.home_id).run();
+    return { ok: true as const, data: { token, account_email: gmail, account_role: row.role === "admin" ? "admin" : "user" } };
+  }
+
   const email = str(p.email, "", 200).toLowerCase();
   const passcode = str(p.passcode, "", 200);
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: "bad-email" };
-  if (passcode.length < 6) return { ok: false, error: "short-passcode" };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false as const, error: "bad-email" };
+  if (passcode.length < 6) return { ok: false as const, error: "short-passcode" };
   const hash = await sha256(passcode);
 
   if (op === "account_signup") {
     const deviceHome = home && HOME_RE.test(home) ? home : null;
-    if (!deviceHome) return { ok: false, error: "invalid-home" };
+    if (!deviceHome) return { ok: false as const, error: "invalid-home" };
     const existing = await DB.prepare("SELECT 1 FROM accounts WHERE email = ?").bind(email).first();
-    if (existing) return { ok: false, error: "email-exists" };
-    await DB.prepare("INSERT INTO accounts (email, home_id, passcode_hash) VALUES (?,?,?)").bind(email, deviceHome, hash).run();
+    if (existing) return { ok: false as const, error: "email-exists" };
+    const found = await DB.prepare("SELECT COUNT(*) AS n FROM accounts").first<{ n: number }>();
+    const role = found && found.n! === 0 ? "admin" : "user";
+    await DB.prepare("INSERT INTO accounts (email, home_id, passcode_hash, role) VALUES (?,?,?,?)").bind(email, deviceHome, hash, role).run();
     const token = crypto.randomUUID();
     await DB.prepare("INSERT INTO sessions (token, home_id) VALUES (?,?)").bind(token, deviceHome).run();
-    return { ok: true, data: { token, account_email: email } };
+    return { ok: true as const, data: { token, account_email: email, account_role: role } };
   }
 
   // login
-  const row = await DB.prepare("SELECT home_id, passcode_hash FROM accounts WHERE email = ?").bind(email).first<{ home_id: string; passcode_hash: string }>();
-  if (!row || row.passcode_hash !== hash) return { ok: false, error: "wrong-credentials" };
-  const token = crypto.randomUUID();
-  await DB.prepare("INSERT INTO sessions (token, home_id) VALUES (?,?)").bind(token, row.home_id).run();
-  return { ok: true, data: { token, account_email: email } };
+  const row = await DB.prepare("SELECT home_id, passcode_hash, role FROM accounts WHERE email = ?").bind(email).first<{ home_id: string; passcode_hash: string; role: string }>();
+  if (!row || row.passcode_hash !== hash) return { ok: false as const, error: "wrong-credentials" };
+  const token2 = crypto.randomUUID();
+  await DB.prepare("INSERT INTO sessions (token, home_id) VALUES (?,?)").bind(token2, row.home_id).run();
+  return { ok: true as const, data: { token: token2, account_email: email, account_role: row.role === "admin" ? "admin" : "user" } };
+}
+
+async function isAdminAccount(DB: D1Database, home: string): Promise<boolean> {
+  const r = await DB.prepare("SELECT role FROM accounts WHERE home_id = ?").bind(home).first<{ role: string }>();
+  return r?.role === "admin";
+}
+
+async function changePassword(DB: D1Database, home: string, p: Record<string, unknown>) {
+  const acc = await DB.prepare("SELECT passcode_hash FROM accounts WHERE home_id = ?").bind(home).first<{ passcode_hash: string }>();
+  if (!acc) return { ok: false as const, error: "auth-required" };
+  const oldHash = await sha256(str(p.old, "", 200));
+  if (acc.passcode_hash !== oldHash) return { ok: false as const, error: "wrong-credentials" };
+  const newPw = str(p.new, "", 200);
+  if (newPw.length < 6) return { ok: false as const, error: "short-passcode" };
+  await DB.prepare("UPDATE accounts SET passcode_hash = ? WHERE home_id = ?").bind(await sha256(newPw), home).run();
+  return syncAll(DB, home);
+}
+
+async function logoutAccount(DB: D1Database, auth: string | undefined) {
+  if (auth) await DB.prepare("DELETE FROM sessions WHERE token = ?").bind(auth).run();
+  return { ok: true as const };
+}
+
+async function adminStats(DB: D1Database, home: string) {
+  if (!(await isAdminAccount(DB, home))) return { ok: false as const, error: "admin-only" };
+  const [accounts, homes, tasks, workers, pendingW, reviews, feedback, adsClicks, subs, week] = await Promise.all([
+    DB.prepare("SELECT COUNT(*) AS n FROM accounts").first<{ n: number }>(),
+    DB.prepare("SELECT COUNT(*) AS n FROM homes").first<{ n: number }>(),
+    DB.prepare("SELECT COUNT(*) AS n FROM tasks").first<{ n: number }>(),
+    DB.prepare("SELECT COUNT(*) AS n FROM workers").first<{ n: number }>(),
+    DB.prepare("SELECT COUNT(*) AS n FROM workers WHERE approved = 0").first<{ n: number }>(),
+    DB.prepare("SELECT COUNT(*) AS n FROM reviews").first<{ n: number }>(),
+    DB.prepare("SELECT COUNT(*) AS n, AVG(rating) AS avg FROM feedback").first<{ n: number; avg: number | null }>(),
+    DB.prepare("SELECT COALESCE(SUM(clicks),0) AS n FROM ads").first<{ n: number }>(),
+    DB.prepare("SELECT COUNT(*) AS n FROM subscriptions WHERE status = 'active'").first<{ n: number }>(),
+    DB.prepare("SELECT on_date, COUNT(*) AS n FROM completions WHERE on_date >= date('now','-6 days') GROUP BY on_date ORDER BY on_date").all<{ on_date: string; n: number }>(),
+  ]);
+  return {
+    ok: true as const,
+    data: {
+      accounts: accounts?.n ?? 0, homes: homes?.n ?? 0, tasks: tasks?.n ?? 0,
+      workers: workers?.n ?? 0, pending: pendingW?.n ?? 0, reviews: reviews?.n ?? 0,
+      feedback: feedback?.n ?? 0, feedback_avg: feedback?.avg ? Math.round(feedback.avg * 10) / 10 : 0,
+      ads_clicks: adsClicks?.n ?? 0, active_subs: subs?.n ?? 0,
+      week: (week.results ?? []).map((r) => ({ d: r.on_date, n: r.n })),
+    },
+  };
+}
+
+async function workerAdminDelete(DB: D1Database, home: string, p: Record<string, unknown>) {
+  if (!(await isAdminAccount(DB, home))) return { ok: false as const, error: "admin-only" };
+  const id = clampNum(p.id, 0, 1, 1e9);
+  await DB.prepare("DELETE FROM reviews WHERE worker_id = ?").bind(id).run();
+  await DB.prepare("DELETE FROM workers WHERE id = ?").bind(id).run();
+  return syncAll(DB, home);
 }

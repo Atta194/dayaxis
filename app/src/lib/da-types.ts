@@ -97,6 +97,8 @@ export interface HomeData {
   pending_workers: Worker[];
   my_workers: Worker[];
   account_email: string | null;
+  account_role: "user" | "admin" | null;
+  account_phone_verified: number;
 }
 
 /* ---------- dates (all local) ---------- */
