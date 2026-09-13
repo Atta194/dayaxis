@@ -17,7 +17,7 @@ export default function Admin() {
   useEffect(() => {
     void (async () => {
       const res = await act.adminStats();
-      if (res.ok && res.data) setStats(res.data as Stats);
+      if (res.ok && res.data) setStats(res.data as unknown as Stats);
     })();
   }, [act]);
 

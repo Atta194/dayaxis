@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 
 import { LANGS } from "../lib/da-content";
+import { isDaError } from "../lib/da-client";
 import { PlansPanel, SponsorPanel } from "./da-plans";
 import { useCtx } from "./da-ctx";
 import { Avatar, Ic, Stars } from "./da-ui";
@@ -290,11 +291,12 @@ export default function Profile() {
               </div>
               <button className="btn" style={{ justifySelf: "start" }} onClick={async () => {
                 const res = await act.googleStart();
-                if (res.ok && res.data && "url" in res.data && typeof res.data.url === "string") window.location.href = res.data.url;
-                else {
-                  const m = res.data && "message" in res.data && typeof res.data.message === "string" ? res.data.message : res.error;
-                  toast(m || "error", "warn");
-                }
+                const url = !isDaError(res) && res.data && typeof (res.data as { url?: unknown }).url === "string" ? (res.data as { url: string }).url : null;
+                if (url) { window.location.href = url; return; }
+                const m = isDaError(res) && res.data && typeof (res.data as { message?: unknown }).message === "string"
+                  ? (res.data as { message: string }).message
+                  : isDaError(res) ? res.error : "error";
+                toast(m || "error", "warn");
               }}>
                 <Ic name="globe" size={15} /> {t("continue_google")}
               </button>
