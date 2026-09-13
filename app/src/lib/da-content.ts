@@ -1843,7 +1843,7 @@ const D: Record<Lang, Dict> = {
 };
 
 export const t = (lang: Lang, key: string): string =>
-  D[lang][key] ?? MIND_D[lang]?.[key] ?? CAT_D[lang]?.[key] ?? EXTRA_D[lang]?.[key] ?? CAT_D.en[key] ?? MIND_D.en[key] ?? EXTRA_D.en[key] ?? D.en[key] ?? key;
+  D[lang][key] ?? MIND_D[lang]?.[key] ?? CAT_D[lang]?.[key] ?? EXTRA_D[lang]?.[key] ?? CAT_D.en?.[key] ?? MIND_D.en?.[key] ?? EXTRA_D.en?.[key] ?? D.en[key] ?? key;
 
 /* category + helper labels (shared by dashboard, task modal, assistant) */
 const CAT_D: Partial<Record<Lang, Record<string, string>>> = {
