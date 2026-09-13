@@ -61,6 +61,9 @@ export interface DaAct {
   adminStats(): Promise<DaResult>;
   googleStart(): Promise<DaResult>;
   googleCallback(code: string): Promise<DaResult>;
+  addTip(title: string, body: string, cat: string): Promise<DaResult>;
+  updateTip(id: number, title: string, body: string): Promise<DaResult>;
+  deleteTip(id: number): Promise<DaResult>;
   saveWorker(w: Record<string, unknown>): Promise<DaResult>;
   deleteWorker(id: number): Promise<DaResult>;
   setWorkerStatus(id: number, status: string, availability: string): Promise<DaResult>;
@@ -178,6 +181,9 @@ export function useDa() {
       },
       adminWorkerDelete: async (id) => call("worker_admin_delete", { id }),
       adminStats: async () => call("admin_stats", {}),
+      addTip: async (title, body, cat) => call("tip_add", { title, body, cat }),
+      updateTip: async (id, title, body) => call("tip_update", { id, title, body }),
+      deleteTip: async (id) => call("tip_delete", { id }),
       googleStart: async () => call("google_auth_start", { origin: window.location.origin }),
       googleCallback: async (code) => {
         const res = await call("google_auth_callback", { code, origin: window.location.origin });

@@ -65,68 +65,68 @@ export default function Dashboard() {
       </div>
 
       {/* stats */}
-      <div className="grid mt3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", alignItems: "stretch" }}>
-        <div className="card" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 14 }}>
-          <Ring pct={pct} size={118} sub={`${doneToday}/${totalToday}`} />
+      <div className="grid mt3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))", alignItems: "stretch" }}>
+        <div className="card" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
+          <Ring pct={pct} size={100} sub={`${doneToday}/${totalToday}`} />
         </div>
-        <Stat tone="brand" num={doneToday} lbl={t("done")} sub={`${t("tasks_done_today")}`} />
-        <Stat tone="gold" num={remainingToday} lbl={t("remaining")} sub={`${t("today_progress")}`} />
-        <Stat tone="accent" num={postponedToday} lbl={t("postponed")} sub={t("postpone_day")} />
-        <Stat tone="danger" num={deletedCount} lbl={t("deleted")} sub={t("deleted_tasks")} />
+        <Stat tone="brand" icon="check" num={doneToday} lbl={t("done")} sub={t("tasks_done_today")} />
+        <Stat tone="gold" icon="cal" num={remainingToday} lbl={t("remaining")} sub={t("today_progress")} />
+        <Stat tone="accent" icon="clock" num={postponedToday} lbl={t("postponed")} sub={t("postpone_day")} />
+        <Stat tone="danger" icon="trash" num={deletedCount} lbl={t("deleted")} sub={t("deleted_tasks")} />
       </div>
 
-      {/* week strip */}
-      <div className="weekstrip mt3">
-        {days.map((d) => {
-          const list = tasksForDate(data.tasks, d);
-          const done = list.filter((x) => occStatus(x, d, data.completions) === "done").length;
-          const dd = new Date(d + "T12:00:00");
-          return (
-            <button key={d} className={`daycell${d === today ? " today" : ""}`} aria-selected={sel === d} onClick={() => setSel(d)}>
-              <span className="dow">{WD[dd.getDay()]}</span>
-              <span className="dnum">{dd.getDate()}</span>
-              <span className="dbar"><i style={{ width: `${list.length ? (done / list.length) * 100 : 0}%` }} /></span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* week chart */}
-      <div className="card mt2">
-        <h3 className="h-sec" style={{ fontSize: 15 }}>{t("past_7")}</h3>
-        <div className="weekchart mt2">
-          {days.map((d) => {
-            const list = tasksForDate(data.tasks, d);
-            const done = list.filter((x) => occStatus(x, d, data.completions) === "done").length;
-            const dd = new Date(d + "T12:00:00");
-            return (
-              <div className="bar" key={d} title={`${d}: ${done}/${list.length}`}>
-                <div className={`fill${list.length && done === list.length ? " full" : ""}`} style={{ height: `${list.length ? Math.max(6, (done / list.length) * 100) : 3}%` }} />
-                <span>{WD[dd.getDay()]}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* selected day tasks */}
-      <div className="row-b mt3">
-        <h2 className="h-sec">{sel === today ? t("plan_today") : fmtShort(sel, lang)}</h2>
-        <span className="muted small tnum">{selTasks.filter((x) => occStatus(x, sel, data.completions) === "done").length}/{selTasks.length} · {t("done")}</span>
-      </div>
-      <div className={`grid mt2${viewMode === "cards" ? " g3" : ""}`} style={viewMode === "compact" ? { gap: 6 } : undefined}>
-        {selTasks.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: "30px 16px", gridColumn: "1 / -1" }}>
-            <Ic name="spark" size={26} />
-            <p className="muted mt2" style={{ fontSize: 14.5 }}>{t("no_tasks_today")}</p>
+      {/* week + today - two-column, no page scroll */}
+      <div className="twocol mt3">
+        <div className="card">
+          <div className="row-b">
+            <h2 className="h-sec" style={{ fontSize: 16 }}>{sel === today ? t("plan_today") : fmtShort(sel, lang)}</h2>
+            <span className="muted small tnum">{selTasks.filter((x) => occStatus(x, sel, data.completions) === "done").length}/{selTasks.length} · {t("done")}</span>
           </div>
-        ) : (
-          selTasks.map((task) => (
-            <div key={task.id} style={viewMode === "cards" ? { height: "100%" } : undefined}>
-              <TaskRow task={task} date={sel} />
-            </div>
-          ))
-        )}
+          <div className="scroll-block mt2" style={{ display: "grid", gap: viewMode === "compact" ? 6 : 8 }}>
+            {selTasks.length === 0 ? (
+              <div className="card" style={{ textAlign: "center", padding: "26px 14px" }}>
+                <Ic name="spark" size={24} />
+                <p className="muted mt2" style={{ fontSize: 14 }}>{t("no_tasks_today")}</p>
+              </div>
+            ) : (
+              selTasks.map((task) => <TaskRow key={task.id} task={task} date={sel} />)
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="row-b">
+            <h3 className="h-sec" style={{ fontSize: 15 }}>{t("past_7")}</h3>
+            <span className="small muted">{fmtShort(today, lang)}</span>
+          </div>
+          <div className="weekstrip mt2">
+            {days.map((d) => {
+              const list = tasksForDate(data.tasks, d);
+              const done = list.filter((x) => occStatus(x, d, data.completions) === "done").length;
+              const dd = new Date(d + "T12:00:00");
+              return (
+                <button key={d} className={`daycell${d === today ? " today" : ""}`} aria-selected={sel === d} onClick={() => setSel(d)}>
+                  <span className="dow">{WD[dd.getDay()]}</span>
+                  <span className="dnum">{dd.getDate()}</span>
+                  <span className="dbar"><i style={{ width: `${list.length ? (done / list.length) * 100 : 0}%` }} /></span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="weekchart mt3">
+            {days.map((d) => {
+              const list = tasksForDate(data.tasks, d);
+              const done = list.filter((x) => occStatus(x, d, data.completions) === "done").length;
+              const dd = new Date(d + "T12:00:00");
+              return (
+                <div className="bar" key={d} title={`${d}: ${done}/${list.length}`}>
+                  <div className={`fill${list.length && done === list.length ? " full" : ""}`} style={{ height: `${list.length ? Math.max(6, (done / list.length) * 100) : 3}%` }} />
+                  <span>{WD[dd.getDay()]}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {adding ? <TaskModal onClose={() => setAdding(false)} presetDate={today} /> : null}
@@ -179,9 +179,10 @@ export default function Dashboard() {
   );
 }
 
-function Stat({ tone, num, lbl, sub }: { tone: string; num: number; lbl: string; sub?: string }) {
+function Stat({ tone, num, lbl, sub, icon }: { tone: string; num: number; lbl: string; sub?: string; icon: string }) {
   return (
     <div className="card stat" data-tone={tone} style={{ justifyContent: "center" }}>
+      <span className="stat-ico"><Ic name={icon} size={18} /></span>
       <span className="stat-num tnum">{num}</span>
       <span className="stat-lbl">{lbl}</span>
       {sub ? <span className="small muted">{sub}</span> : null}

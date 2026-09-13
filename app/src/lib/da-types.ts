@@ -83,6 +83,14 @@ export interface Ad {
   created_at: string;
 }
 
+export interface ManagedTip {
+  id: number;
+  cat: string;
+  title: string;
+  body: string;
+  created_at: string;
+}
+
 export interface HomeData {
   home_id: string;
   members: Member[];
@@ -94,6 +102,7 @@ export interface HomeData {
   mind_log: MindLog[];
   subscription: Subscription | null;
   ads: Ad[];
+  tips: ManagedTip[];
   pending_workers: Worker[];
   my_workers: Worker[];
   account_email: string | null;

@@ -171,7 +171,7 @@ export default function Planner() {
               <input ref={fileRef} type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) restore(f); e.target.value = ""; }} />
               <button className="btn btn-sm" onClick={() => void import("../lib/da-export").then((m) => m.composeEmail("DayAxis history export", `DayAxis history for ${today}\n\nDownload CSV/PDF in DayAxis → Plan → History.`))}><Ic name="mail" /> {t("email_export")}</button>
             </div>
-            <div className="mt3" style={{ overflowX: "auto" }}>
+            <div className="mt3 scroll-block-lg scroll-x">
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }} className="tnum">
                 <thead>
                   <tr style={{ textAlign: "left", color: "var(--ink2)" }}>

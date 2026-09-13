@@ -68,7 +68,7 @@ export default function Mind() {
           <div className="card mt3">
             <h3 className="h-sec" style={{ fontSize: 15.5 }}>{t("mind_logs")}</h3>
             {medLogs.length === 0 ? <p className="muted small mt2">{t("empty")}</p> : null}
-            <div className="mt2" style={{ display: "grid", gap: 8 }}>
+            <div className="mt2 scroll-block" style={{ display: "grid", gap: 8 }}>
               {medLogs.slice(0, 8).map((l) => (
                 <div key={l.id} className="row" style={{ borderTop: "1px solid var(--line)", paddingTop: 8 }}>
                   <Ic name="zen" size={16} />
@@ -309,7 +309,7 @@ function SleepTab({ sleepLogs }: { sleepLogs: MindLog[] }) {
             ))}
         </div>
         {sleepLogs.length ? (
-          <div className="mt3" style={{ display: "grid", gap: 8 }}>
+          <div className="mt3 scroll-block" style={{ display: "grid", gap: 8 }}>
             {sleepLogs.slice(0, 6).map((l) => (
               <div key={l.id} className="row" style={{ borderTop: "1px solid var(--line)", paddingTop: 8 }}>
                 <span className="flex1 small muted">{l.at?.slice(0, 10)} {l.note}</span>

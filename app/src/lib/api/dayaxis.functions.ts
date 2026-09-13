@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { D1Database } from "@cloudflare/workers-types";
 
 import { bindings } from "../bindings.server";
-import type { Ad, Cat, Feedback, HomeData, Member, MindLog, Review, Subscription, Task, Worker } from "../da-types";
+import type { Ad, Cat, Feedback, HomeData, ManagedTip, Member, MindLog, Review, Subscription, Task, Worker } from "../da-types";
 
 const HOME_RE = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -99,6 +99,9 @@ export const da = createServerFn({ method: "POST" })
         case "account_logout": return await logoutAccount(DB, data.auth);
         case "admin_stats": return await adminStats(DB, home);
         case "worker_admin_delete": return await workerAdminDelete(DB, home, p);
+        case "tip_add": return await tipAdd(DB, home, p);
+        case "tip_update": return await tipUpdate(DB, home, p);
+        case "tip_delete": return await tipDelete(DB, home, p);
         default: return { ok: false as const, error: "unknown-op" };
       }
     } catch (e) {
@@ -131,7 +134,7 @@ async function workersWithReviews(DB: D1Database): Promise<{ workers: Worker[]; 
 async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: HomeData }> {
   await DB.prepare("INSERT OR IGNORE INTO homes (id) VALUES (?)").bind(home).run();
   const isOwnerH = (await DB.prepare("SELECT 1 FROM members WHERE home_id = ? AND is_owner = 1").bind(home).first()) !== null;
-  const [m, t, c, f, a, ww, mind, sub, ads, pending] = await Promise.all([
+  const [m, t, c, f, a, ww, mind, sub, ads, pending, allTips] = await Promise.all([
     DB.prepare("SELECT * FROM members WHERE home_id = ? ORDER BY id").bind(home).all<Member>(),
     DB.prepare("SELECT * FROM tasks WHERE home_id = ? AND status IN ('active','deleted') ORDER BY created_at DESC").bind(home).all<Task>(),
     DB.prepare("SELECT * FROM completions WHERE task_id IN (SELECT id FROM tasks WHERE home_id = ?) ORDER BY on_date DESC").bind(home).all(),
@@ -144,6 +147,7 @@ async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: 
     isOwnerH
       ? DB.prepare("SELECT * FROM workers WHERE approved = 0 ORDER BY id ASC").all<Worker>()
       : Promise.resolve({ results: [] as Worker[] }),
+    DB.prepare("SELECT * FROM tips ORDER BY id DESC").all<ManagedTip>(),
   ]);
   const my = ww.workers.filter((w) => w.owner_home === home);
   return {
@@ -161,6 +165,7 @@ async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: 
       subscription: sub ?? null,
       ads: ads.results ?? [],
       pending_workers: isOwnerH ? (pending.results ?? []).map((x) => ({ ...x, rating: 0, review_count: 0 }) as Worker) : [],
+      tips: (allTips.results ?? []).map((x) => ({ id: x.id, cat: x.cat, title: x.title, body: x.body, created_at: x.created_at })),
       workers: ww.workers,
       reviews: ww.reviews,
       my_workers: my,
@@ -568,7 +573,7 @@ async function logoutAccount(DB: D1Database, auth: string | undefined) {
 
 async function adminStats(DB: D1Database, home: string) {
   if (!(await isAdminAccount(DB, home))) return { ok: false as const, error: "admin-only" };
-  const [accounts, homes, tasks, workers, pendingW, reviews, feedback, adsClicks, subs, week] = await Promise.all([
+  const [accounts, homes, tasks, workers, pendingW, reviews, feedback, adsClicks, subs, week, feedbackList] = await Promise.all([
     DB.prepare("SELECT COUNT(*) AS n FROM accounts").first<{ n: number }>(),
     DB.prepare("SELECT COUNT(*) AS n FROM homes").first<{ n: number }>(),
     DB.prepare("SELECT COUNT(*) AS n FROM tasks").first<{ n: number }>(),
@@ -579,6 +584,7 @@ async function adminStats(DB: D1Database, home: string) {
     DB.prepare("SELECT COALESCE(SUM(clicks),0) AS n FROM ads").first<{ n: number }>(),
     DB.prepare("SELECT COUNT(*) AS n FROM subscriptions WHERE status = 'active'").first<{ n: number }>(),
     DB.prepare("SELECT on_date, COUNT(*) AS n FROM completions WHERE on_date >= date('now','-6 days') GROUP BY on_date ORDER BY on_date").all<{ on_date: string; n: number }>(),
+    DB.prepare("SELECT * FROM feedback ORDER BY id DESC LIMIT 20").all<Feedback>(),
   ]);
   return {
     ok: true as const,
@@ -588,6 +594,7 @@ async function adminStats(DB: D1Database, home: string) {
       feedback: feedback?.n ?? 0, feedback_avg: feedback?.avg ? Math.round(feedback.avg * 10) / 10 : 0,
       ads_clicks: adsClicks?.n ?? 0, active_subs: subs?.n ?? 0,
       week: (week.results ?? []).map((r) => ({ d: r.on_date, n: r.n })),
+      recent_feedback: feedbackList.results ?? [],
     },
   };
 }
@@ -597,5 +604,32 @@ async function workerAdminDelete(DB: D1Database, home: string, p: Record<string,
   const id = clampNum(p.id, 0, 1, 1e9);
   await DB.prepare("DELETE FROM reviews WHERE worker_id = ?").bind(id).run();
   await DB.prepare("DELETE FROM workers WHERE id = ?").bind(id).run();
+  return syncAll(DB, home);
+}
+
+async function tipAdd(DB: D1Database, home: string, p: Record<string, unknown>) {
+  if (!(await isAdminAccount(DB, home))) return { ok: false as const, error: "admin-only" };
+  const title = str(p.title, "", 200);
+  if (!title) return { ok: false as const, error: "title" };
+  const body = str(p.body, "", 1000);
+  const cat = str(p.cat, "general", 30) || "general";
+  await DB.prepare("INSERT INTO tips (cat, title, body) VALUES (?,?,?)").bind(cat, title, body).run();
+  return syncAll(DB, home);
+}
+
+async function tipUpdate(DB: D1Database, home: string, p: Record<string, unknown>) {
+  if (!(await isAdminAccount(DB, home))) return { ok: false as const, error: "admin-only" };
+  const id = clampNum(p.id, 0, 1, 1e9);
+  const title = str(p.title, "", 200);
+  if (!title) return { ok: false as const, error: "title" };
+  const body = str(p.body, "", 1000);
+  await DB.prepare("UPDATE tips SET title = ?, body = ? WHERE id = ?").bind(title, body, id).run();
+  return syncAll(DB, home);
+}
+
+async function tipDelete(DB: D1Database, home: string, p: Record<string, unknown>) {
+  if (!(await isAdminAccount(DB, home))) return { ok: false as const, error: "admin-only" };
+  const id = clampNum(p.id, 0, 1, 1e9);
+  await DB.prepare("DELETE FROM tips WHERE id = ?").bind(id).run();
   return syncAll(DB, home);
 }

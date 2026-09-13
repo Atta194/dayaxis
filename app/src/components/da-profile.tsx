@@ -11,7 +11,7 @@ import { LS, lsGet, lsSet } from "../lib/da-types";
 const COLORS = ["#1E7A6B", "#E8705F", "#E9B44C", "#8A5BB1", "#2E5FA3", "#4C9E6F", "#B3568B", "#8A6D1E"];
 
 export default function Profile() {
-  const { data, act, t, lang, setLang, theme, setTheme, viewMode, setViewMode, toast, memberId, setMemberId, refresh, installApp } = useCtx();
+  const { data, act, t, lang, setLang, theme, setTheme, viewMode, setViewMode, toast, memberId, setMemberId, refresh, installApp, setView } = useCtx();
   const [newMember, setNewMember] = useState("");
   const [renaming, setRenaming] = useState<number | null>(null);
   const [renameVal, setRenameVal] = useState("");
@@ -277,7 +277,11 @@ export default function Profile() {
                   const ident = phoneMode ? `${digits}@phone.dayaxis` : email;
                   const okId = phoneMode ? digits.length >= 5 : ident.trim().length > 3;
                   const r = okId && pass.length >= 6 ? await act.signup(ident, pass) : { ok: false as const, error: "short" };
-                  if (r.ok) { toast(t("welcome")); setEmail(""); setPass(""); void refresh(); }
+                  if (r.ok) {
+                    toast(t("welcome")); setEmail(""); setPass(""); void refresh();
+                    const role = r.data && "account_role" in r.data ? r.data.account_role : null;
+                    setView(role === "admin" ? "admin" : "dash");
+                  }
                   else toast(r.error === "email-exists" ? "Account exists - sign in" : r.error, "warn");
                 }}>{t("signup")}</button>
                 <button className="btn btn-sm" onClick={async () => {
@@ -285,7 +289,11 @@ export default function Profile() {
                   const ident = phoneMode ? `${digits}@phone.dayaxis` : email;
                   const okId = phoneMode ? digits.length >= 5 : ident.trim().length > 3;
                   const r = okId && pass.length >= 6 ? await act.login(ident, pass) : { ok: false as const, error: "short" };
-                  if (r.ok) { toast(t("welcome")); setEmail(""); setPass(""); void refresh(); }
+                  if (r.ok) {
+                    toast(t("welcome")); setEmail(""); setPass(""); void refresh();
+                    const role = r.data && "account_role" in r.data ? r.data.account_role : null;
+                    setView(role === "admin" ? "admin" : "dash");
+                  }
                   else toast(r.error === "wrong-credentials" ? "Wrong email or code" : r.error, "warn");
                 }}>{t("login")}</button>
               </div>

@@ -73,6 +73,8 @@ export default function Shell() {
             push(msg || "error", "warn");
           } else {
             push(t("welcome"), "ok");
+            const role = res.data && "account_role" in res.data ? res.data.account_role : null;
+            setView(role === "admin" ? "admin" : "dash");
           }
         });
       }

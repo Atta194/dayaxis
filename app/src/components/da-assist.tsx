@@ -7,7 +7,7 @@ import { Ic } from "./da-ui";
 import { LS, lsGet, lsSet, speechInput } from "../lib/da-types";
 
 export default function Assist() {
-  const { t, lang, toast } = useCtx();
+  const { t, lang, toast, data } = useCtx();
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<{ answer: string; from: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -56,7 +56,8 @@ export default function Assist() {
     setTimeout(stop, 7000);
   };
 
-  const tips = catFilter === "all" ? TIPS : TIPS.filter((x) => x.cat === catFilter);
+  const pool = [...TIPS, ...(data?.tips ?? [])];
+  const tips = catFilter === "all" ? pool : pool.filter((x) => x.cat === catFilter);
   const cats = ["all", "meal", "medicine", "childcare", "exercise", "family", "break", "general"];
 
   return (
@@ -143,7 +144,7 @@ export default function Assist() {
             </button>
           ))}
         </div>
-        <div className="grid g3 mt3">
+        <div className="grid g3 mt3 scroll-block-lg" style={{ alignItems: "start" }}>
           {tips.map((tip) => (
             <div className="card" key={tip.id} onClick={() => toast(tip.title)} style={{ cursor: "pointer" }}>
               <h3 style={{ fontSize: 14.5 }}>{tip.title}</h3>
