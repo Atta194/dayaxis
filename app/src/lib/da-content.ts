@@ -1846,7 +1846,7 @@ export const t = (lang: Lang, key: string): string =>
   D[lang][key] ?? MIND_D[lang]?.[key] ?? CAT_D[lang]?.[key] ?? EXTRA_D[lang]?.[key] ?? CAT_D.en[key] ?? MIND_D.en[key] ?? EXTRA_D.en[key] ?? D.en[key] ?? key;
 
 /* category + helper labels (shared by dashboard, task modal, assistant) */
-const CAT_D: Record<Lang, Record<string, string>> = {
+const CAT_D: Partial<Record<Lang, Record<string, string>>> = {
   en: {
     cat_all: "All", cat_meal: "Meals", cat_medicine: "Medicine", cat_childcare: "Kids & parents",
     cat_exercise: "Exercise", cat_family: "Family", cat_break: "Breaks", cat_custom: "Custom",
@@ -2184,7 +2184,7 @@ export const SLEEP_TIPS: string[] = [
   "A cool room (16-19 C) falls asleep faster than a warm one.",
 ];
 
-const MIND_D: Record<Lang, Record<string, string>> = {
+const MIND_D: Partial<Record<Lang, Record<string, string>>> = {
   en: {
     nav_mind: "Mind", mind_meditate: "Meditate", mind_sleep: "Sleep", mind_sessions: "Guided sessions",
     mind_min: "min", mind_start: "Start", mind_cancel: "Cancel", mind_finished: "Session complete",
@@ -2527,7 +2527,7 @@ export const BLUEPRINT: BlueprintSection[] = [
 ];
 
 /* ============================= EXTRA labels ============================= */
-const EXTRA_D: Record<Lang, Record<string, string>> = {
+const EXTRA_D: Partial<Record<Lang, Record<string, string>>> = {
   en: {
     ls_silence: "Silence", ls_rain: "Rain", ls_soft: "Soft noise", ls_music: "Peaceful music",
     ls_poem: "Poem", ls_theme: "Theme", ls_story: "Story", ls_motivation: "Motivation",
