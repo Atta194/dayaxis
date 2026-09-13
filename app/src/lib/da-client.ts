@@ -13,6 +13,17 @@ export function isDaError(res: DaResult): res is Extract<DaResult, { ok: false }
   return res.ok === false;
 }
 
+function loadCache(): HomeData | null {
+  try {
+    const raw = lsGet(LS.cache);
+    if (!raw) return null;
+    const o = JSON.parse(raw) as HomeData;
+    return o && o.home_id ? o : null;
+  } catch {
+    return null;
+  }
+}
+
 export function deviceId(): string {
   if (typeof window === "undefined") return "da-server";
   let d = lsGet(LS.device);
@@ -45,6 +56,8 @@ export interface DaAct {
   setWorkerStatus(id: number, status: string, availability: string): Promise<DaResult>;
   addReview(workerId: number, rating: number, text: string, byName: string): Promise<DaResult>;
   sendFeedback(rating: number, text: string): Promise<DaResult>;
+  mindAdd(kind: "meditation" | "sleep", minutes: number, mood: number | null, note: string): Promise<DaResult>;
+  mindDelete(id: number): Promise<DaResult>;
   signup(email: string, passcode: string): Promise<DaResult>;
   login(email: string, passcode: string): Promise<DaResult>;
 }
@@ -53,6 +66,7 @@ export function useDa() {
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -64,9 +78,17 @@ export function useDa() {
       if (res.data && "home_id" in res.data) {
         setData(res.data as HomeData);
         setError(null);
+        setOffline(false);
+        lsSet(LS.cache, JSON.stringify(res.data));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "network");
+      const cached = loadCache();
+      if (cached) {
+        setData(cached);
+        setOffline(true);
+      } else {
+        setError(e instanceof Error ? e.message : "network");
+      }
     } finally {
       setLoading(false);
     }
@@ -85,10 +107,17 @@ export function useDa() {
       }
       if (res.data && "home_id" in res.data) {
         setData(res.data as HomeData);
+        setOffline(false);
+        lsSet(LS.cache, JSON.stringify(res.data));
       }
       return res;
     } catch (e) {
       setError(e instanceof Error ? e.message : "network");
+      const cached = loadCache();
+      if (cached) {
+        setData(cached);
+        setOffline(true);
+      }
       return { ok: false, error: "network" };
     }
   }, []);
@@ -126,6 +155,8 @@ export function useDa() {
       setWorkerStatus: async (id, status, availability) => call("worker_status", { id, status, availability }),
       addReview: async (workerId, rating, text, byName) => call("review_add", { workerId, rating, text, byName }),
       sendFeedback: async (rating, text) => call("feedback_add", { rating, text }),
+      mindAdd: async (kind, minutes, mood, note) => call("mind_add", { kind, minutes, mood, note }),
+      mindDelete: async (id) => call("mind_delete", { id }),
       signup: async (email, passcode) => {
         const res = await call("account_signup", { email, passcode });
         const tkn = res.ok && res.data && "token" in res.data ? String(res.data.token) : "";
@@ -141,5 +172,5 @@ export function useDa() {
     };
   }, [call, refresh]);
 
-  return { data, loading, error, refresh, call, act };
+  return { data, loading, error, offline, refresh, call, act };
 }

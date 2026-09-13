@@ -20,6 +20,8 @@ export interface DaCtx {
   setViewMode(m: "cards" | "list" | "compact"): void;
   celebrate(): void;
   refresh(): void;
+  offline: boolean;
+  installApp: (() => void) | null;
 }
 
 export const DaCtx = createContext<DaCtx | null>(null);

@@ -109,7 +109,7 @@ a { color: var(--brand); }
 /* mobile bottom nav */
 .mobilenav {
   position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 50;
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
   background: var(--card); border: 1px solid var(--line); border-radius: 18px;
   padding: 6px; box-shadow: var(--shadow2);
 }
@@ -419,3 +419,20 @@ a { color: var(--brand); }
 
 /* tabular numbers for stats */
 .tnum { font-variant-numeric: tabular-nums; }
+
+/* ---------- mind ---------- */
+.breath-circle {
+  border-radius: 50%;
+  border: 3px solid var(--brand3);
+  background: radial-gradient(circle at 35% 30%, var(--brand3), var(--brand));
+  box-shadow: 0 16px 44px -14px var(--brand);
+}
+
+/* ---------- offline banner ---------- */
+.offline-ban {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 84px; z-index: 110;
+  background: var(--gold); color: #3a2f0d; border-radius: 999px; padding: 8px 16px;
+  font-size: 13px; font-weight: 700; box-shadow: var(--shadow2);
+  display: flex; gap: 8px; align-items: center;
+}
+@media (min-width: 900px) { .offline-ban { bottom: 26px; } }

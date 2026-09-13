@@ -5,7 +5,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 
 import { bindings } from "../bindings.server";
 import { SEED_REVIEWS, SEED_WORKERS } from "../da-content";
-import type { Cat, Feedback, HomeData, Member, Review, Task, Worker } from "../da-types";
+import type { Cat, Feedback, HomeData, Member, MindLog, Review, Task, Worker } from "../da-types";
 
 const HOME_RE = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -69,6 +69,8 @@ export const da = createServerFn({ method: "POST" })
         case "worker_status": return await workerStatus(DB, p);
         case "review_add": return await reviewAdd(DB, home, p);
         case "feedback_add": return await feedbackAdd(DB, home, p);
+        case "mind_add": return await mindAdd(DB, home, p);
+        case "mind_delete": return await mindDelete(DB, home, p);
         default: return { ok: false as const, error: "unknown-op" };
       }
     } catch (e) {
@@ -118,13 +120,14 @@ async function workersWithReviews(DB: D1Database): Promise<{ workers: Worker[]; 
 async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: HomeData }> {
   await DB.prepare("INSERT OR IGNORE INTO homes (id) VALUES (?)").bind(home).run();
   await seedWorkers(DB);
-  const [m, t, c, f, a, ww] = await Promise.all([
+  const [m, t, c, f, a, ww, mind] = await Promise.all([
     DB.prepare("SELECT * FROM members WHERE home_id = ? ORDER BY id").bind(home).all<Member>(),
     DB.prepare("SELECT * FROM tasks WHERE home_id = ? AND status IN ('active','deleted') ORDER BY created_at DESC").bind(home).all<Task>(),
     DB.prepare("SELECT * FROM completions WHERE task_id IN (SELECT id FROM tasks WHERE home_id = ?) ORDER BY on_date DESC").bind(home).all(),
     DB.prepare("SELECT * FROM feedback WHERE home_id = ? ORDER BY id DESC LIMIT 200").bind(home).all<Feedback>(),
     DB.prepare("SELECT email FROM accounts WHERE home_id = ? LIMIT 1").bind(home).first<{ email: string }>(),
     workersWithReviews(DB),
+    DB.prepare("SELECT * FROM mind_log WHERE home_id = ? ORDER BY id DESC LIMIT 300").bind(home).all<MindLog>(),
   ]);
   const my = ww.workers.filter((w) => w.owner_home === home);
   return {
@@ -134,9 +137,13 @@ async function syncAll(DB: D1Database, home: string): Promise<{ ok: true; data: 
       members: (m.results ?? []).map((x) => ({ ...x, checklist: undefined }) as unknown as Member),
       tasks: (t.results ?? []).map((x) => ({ ...x, checklist: JSON.parse(String(x.checklist ?? "[]")) }) as Task),
       completions: (c.results ?? []).map((r) => ({ task_id: r.task_id as string, on_date: r.on_date as string, kind: (r.kind as "done" | "postponed") })),
+feedback: f.results ?? [],
+      mind_log: (mind.results ?? []).map((x) => ({
+        id: x.id, home_id: x.home_id, kind: x.kind as "meditation" | "sleep",
+        minutes: x.minutes, mood: x.mood, note: x.note, at: x.at,
+      })),
       workers: ww.workers,
       reviews: ww.reviews,
-      feedback: f.results ?? [],
       my_workers: my,
       account_email: a?.email ?? null,
     },
@@ -278,6 +285,22 @@ async function feedbackAdd(DB: D1Database, home: string, p: Record<string, unkno
   const rating = clampNum(p.rating, 5, 1, 5);
   const text = str(p.text, "", 2000);
   await DB.prepare("INSERT INTO feedback (home_id, rating, text) VALUES (?,?,?)").bind(home, rating, text).run();
+  return syncAll(DB, home);
+}
+
+async function mindAdd(DB: D1Database, home: string, p: Record<string, unknown>) {
+  const kind = str(p.kind, "meditation", 20) === "sleep" ? "sleep" : "meditation";
+  const minutes = clampNum(p.minutes, 5, 1, 1440);
+  const mood = p.mood == null ? null : clampNum(p.mood, 3, 1, 5);
+  const note = str(p.note, "", 200);
+  await DB.prepare("INSERT INTO mind_log (home_id, kind, minutes, mood, note) VALUES (?,?,?,?,?)")
+    .bind(home, kind, minutes, mood, note).run();
+  return syncAll(DB, home);
+}
+
+async function mindDelete(DB: D1Database, home: string, p: Record<string, unknown>) {
+  const id = clampNum(p.id, 0, 1, 1e9);
+  await DB.prepare("DELETE FROM mind_log WHERE id = ? AND home_id = ?").bind(id, home).run();
   return syncAll(DB, home);
 }
 

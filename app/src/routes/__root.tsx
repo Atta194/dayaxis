@@ -75,6 +75,9 @@ function buildHead(meta: AppMeta) {
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#F6F3EA" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { title },
       { name: "description", content: description },
       { name: "author", content: "Higgsfield" },
@@ -101,6 +104,8 @@ function buildHead(meta: AppMeta) {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:wght@500;600;700&display=swap",
       },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/brand/icon-180.png" },
       ...(favicon ? [{ rel: "icon", href: favicon }] : []),
     ],
   };

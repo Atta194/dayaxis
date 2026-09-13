@@ -475,7 +475,8 @@ const D: Record<Lang, Dict> = {
   },
 };
 
-export const t = (lang: Lang, key: string): string => D[lang][key] ?? D.en[key] ?? key;
+export const t = (lang: Lang, key: string): string =>
+  D[lang][key] ?? MIND_D[lang]?.[key] ?? MIND_D.en[key] ?? D.en[key] ?? key;
 
 /* ============================= categories ============================= */
 export const CATS: { id: Cat; color: string }[] = [
@@ -752,3 +753,143 @@ export const SEED_REVIEWS: { worker_i: number; by: string; rating: number; text:
   { worker_i: 6, by: "Tom", rating: 4, text: "Fixed my laptop in 40 minutes, explained what happened." },
   { worker_i: 7, by: "Dana", rating: 5, text: "Clear advice, fair fee, quick response." },
 ];
+
+/* ============================= mind & sleep ============================= */
+export interface MindSession {
+  id: string;
+  kind: "breath" | "guide" | "focus" | "kids";
+  titleKey: string;
+  mins: number;
+  pattern: { in: number; hold: number; out: number; hold2: number }[];
+  stepsKey: ("settle" | "notice" | "close")[];
+}
+
+export const MIND_SESSIONS: MindSession[] = [
+  { id: "reset3", kind: "breath", titleKey: "s1", mins: 3, pattern: [{ in: 4, hold: 4, out: 4, hold2: 0 }], stepsKey: ["settle"] },
+  { id: "sleep5", kind: "breath", titleKey: "s2", mins: 5, pattern: [{ in: 4, hold: 7, out: 8, hold2: 0 }], stepsKey: ["settle", "close"] },
+  { id: "focus10", kind: "focus", titleKey: "s3", mins: 10, pattern: [{ in: 4, hold: 2, out: 4, hold2: 0 }], stepsKey: ["settle", "notice"] },
+  { id: "body8", kind: "guide", titleKey: "s4", mins: 8, pattern: [{ in: 4, hold: 2, out: 6, hold2: 0 }], stepsKey: ["settle", "notice", "close"] },
+  { id: "stress5", kind: "breath", titleKey: "s5", mins: 5, pattern: [{ in: 4, hold: 4, out: 4, hold2: 4 }], stepsKey: ["settle", "close"] },
+  { id: "kids4", kind: "kids", titleKey: "s6", mins: 4, pattern: [{ in: 3, hold: 2, out: 3, hold2: 0 }], stepsKey: ["settle", "close"] },
+];
+
+export const WIND_IDS = ["wind1", "wind2", "wind3", "wind4", "wind5"];
+
+export const SLEEP_TIPS: string[] = [
+  "Keep the same bedtime and wake time even on weekends. The body loves rhythm.",
+  "Eat the last big meal 3 hours before bed. A light snack is fine.",
+  "Daylight in the morning, dim light in the evening - light sets your clock.",
+  "If you cannot sleep after 20 minutes, get up and do something calm, then return.",
+  "A cool room (16-19 C) falls asleep faster than a warm one.",
+];
+
+const MIND_D: Record<Lang, Record<string, string>> = {
+  en: {
+    nav_mind: "Mind", mind_meditate: "Meditate", mind_sleep: "Sleep", mind_sessions: "Guided sessions",
+    mind_min: "min", mind_start: "Start", mind_cancel: "Cancel", mind_finished: "Session complete",
+    mind_mood: "How do you feel now?", mind_saved: "Logged", mind_weekly: "This week", mind_logs: "Recent sessions",
+    mind_noise: "Sound", mind_none: "Silence", mind_rain: "Rain", mind_pink: "Soft noise",
+    mind_phase_in: "Breathe in", mind_phase_hold: "Hold", mind_phase_out: "Breathe out", mind_phase_hold2: "Hold",
+    mind_step1: "Settle in, close your eyes, soften your hands.",
+    mind_step2: "Thoughts will come. Notice them, let them pass.",
+    mind_step3: "Gently return. Open your eyes when ready.",
+    sleep_bedtime: "Bedtime goal", sleep_wake: "Wake goal", sleep_duration: "Planned sleep",
+    sleep_log: "Log last night", sleep_to_bed: "Went to bed", sleep_woke: "Woke up",
+    sleep_add: "Save night", sleep_week: "Last 7 nights (hours)", sleep_tips: "Sleep hygiene",
+    sleep_wind: "Wind-down checklist",
+    s1: "Quick reset", s2: "4-7-8 sleep breath", s3: "Focus 10", s4: "Body scan", s5: "Stress reset", s6: "Kids balloon",
+    wind1: "Screens off 30 min before bed", wind2: "Dim the lights", wind3: "Cool, dark, quiet room",
+    wind4: "No caffeine after lunch", wind5: "Same bedtime every night",
+    mind_tonight: "Tonight", mind_times: "sessions",
+  },
+  ru: {
+    nav_mind: "Покой", mind_meditate: "Медитации", mind_sleep: "Сон", mind_sessions: "Сессии с голосом",
+    mind_min: "мин", mind_start: "Начать", mind_cancel: "Отмена", mind_finished: "Сессия завершена",
+    mind_mood: "Как вы себя чувствуете?", mind_saved: "Записано", mind_weekly: "За неделю", mind_logs: "Недавние",
+    mind_noise: "Звук", mind_none: "Тишина", mind_rain: "Дождь", mind_pink: "Шум",
+    mind_phase_in: "Вдох", mind_phase_hold: "Задержка", mind_phase_out: "Выдох", mind_phase_hold2: "Задержка",
+    mind_step1: "Устройтесь удобно, закройте глаза, расслабьте руки.",
+    mind_step2: "Мысли будут приходить. Замечайте и отпускайте их.",
+    mind_step3: "Мягко вернитесь. Откройте глаза, когда готовы.",
+    sleep_bedtime: "Ложимся в", sleep_wake: "Встаём в", sleep_duration: "Плановый сон",
+    sleep_log: "Записать вчерашний сон", sleep_to_bed: "Лёг в", sleep_woke: "Проснулся в",
+    sleep_add: "Сохранить", sleep_week: "Последние 7 ночей (часы)", sleep_tips: "Гигиена сна",
+    sleep_wind: "Ритуал перед сном",
+    s1: "Быстрый ресет", s2: "Дыхание 4-7-8", s3: "Фокус 10", s4: "Сканирование тела", s5: "Сброс стресса", s6: "Шарик для детей",
+    wind1: "Экраны выключены за 30 мин", wind2: "Приглушите свет", wind3: "Прохладно, темно, тихо",
+    wind4: "Без кофеина после обеда", wind5: "Ложиться в одно время",
+    mind_tonight: "Вечер", mind_times: "сессий",
+  },
+  hi: {
+    nav_mind: "मन", mind_meditate: "ध्यान", mind_sleep: "नींद", mind_sessions: "निर्देशित सत्र",
+    mind_min: "मिनट", mind_start: "शुरू", mind_cancel: "रद्द", mind_finished: "सत्र पूर्ण",
+    mind_mood: "अब कैसा महसूस करते हैं?", mind_saved: "सहेजा", mind_weekly: "इस हफ्ते", mind_logs: "हाल के",
+    mind_noise: "ध्वनि", mind_none: "शांति", mind_rain: "बारिश", mind_pink: "मुलायम शोर",
+    mind_phase_in: "साँस लें", mind_phase_hold: "रोकें", mind_phase_out: "साँस छोड़ें", mind_phase_hold2: "रोकें",
+    mind_step1: "आराम से बैठें, आँखें बंद करें, हाथ ढीले करें।",
+    mind_step2: "विचार आएँगे। उन्हें देखें और जाने दें।",
+    mind_step3: "धीरे से लौटें। तैयार होने पर आँखें खोलें।",
+    sleep_bedtime: "सोने का लक्ष्य", sleep_wake: "जागने का लक्ष्य", sleep_duration: "योजनाबद्ध नींद",
+    sleep_log: "कल की नींद जोड़ें", sleep_to_bed: "सोए", sleep_woke: "जागे",
+    sleep_add: "सहेजें", sleep_week: "पिछली 7 रातें (घंटे)", sleep_tips: "नींद की आदतें",
+    sleep_wind: "सोने से पहले की दिनचर्या",
+    s1: "त्वरित रीसेट", s2: "साँस 4-7-8", s3: "फोकस 10", s4: "बॉडी स्कैन", s5: "तनाव मुक्ति", s6: "बच्चों का गुब्बारा",
+    wind1: "सोने से 30 मिनट पहले स्क्रीन बंद", wind2: "रोशनी कम करें", wind3: "ठंडा, अँधेरा, शांत कमरा",
+    wind4: "दोपहर बाद कैफीन नहीं", wind5: "रोज़ एक ही समय सोएँ",
+    mind_tonight: "आज रात", mind_times: "सत्र",
+  },
+  ur: {
+    nav_mind: "ذہن", mind_meditate: "مراقبہ", mind_sleep: "نیند", mind_sessions: "رہنمائی سیشن",
+    mind_min: "منٹ", mind_start: "شروع", mind_cancel: "منسوخ", mind_finished: "سیشن مکمل",
+    mind_mood: "اب کیسا محسوس کرتے ہیں؟", mind_saved: "محفوظ", mind_weekly: "اس ہفتے", mind_logs: "حالیہ",
+    mind_noise: "آواز", mind_none: "خاموشی", mind_rain: "بارش", mind_pink: "نرم شور",
+    mind_phase_in: "سانس لیں", mind_phase_hold: "روکیں", mind_phase_out: "سانس چھوڑیں", mind_phase_hold2: "روکیں",
+    mind_step1: "آرام سے بیٹھیں، آنکھیں بند کریں، ہاتھ ڈھیلے کریں۔",
+    mind_step2: "خیالات آئیں گے۔ دیکھیں اور چھوڑ دیں۔",
+    mind_step3: "آہستہ لوٹیں۔ تیار ہوں تو آنکھیں کھولیں۔",
+    sleep_bedtime: "سونے کا وقت", sleep_wake: "جاگنے کا وقت", sleep_duration: "منصوبہ بند نیند",
+    sleep_log: "کل کی نیند لکھیں", sleep_to_bed: "سوئے", sleep_woke: "جاگے",
+    sleep_add: "محفوظ", sleep_week: "پچھلی 7 راتیں (گھنٹے)", sleep_tips: "نیند کی عادات",
+    sleep_wind: "سونے سے پہلے کا معمول",
+    s1: "فوری ری سیٹ", s2: "سانس 4-7-8", s3: "فوکس 10", s4: "باڈی اسکین", s5: "تناؤ کم کریں", s6: "بچوں کا غبارہ",
+    wind1: "سونے سے 30 منٹ پہلے اسکرین بند", wind2: "روشنی کم کریں", wind3: "ٹھنڈا، اندھیرا، پرسکون کمرہ",
+    wind4: "دوپہر کے بعد کیفین نہیں", wind5: "روزانہ ایک ہی وقت سونا",
+    mind_tonight: "آج رات", mind_times: "سیشن",
+  },
+  es: {
+    nav_mind: "Mente", mind_meditate: "Meditar", mind_sleep: "Dormir", mind_sessions: "Sesiones guiadas",
+    mind_min: "min", mind_start: "Empezar", mind_cancel: "Cancelar", mind_finished: "Sesión completa",
+    mind_mood: "¿Cómo te sientes ahora?", mind_saved: "Guardado", mind_weekly: "Esta semana", mind_logs: "Recientes",
+    mind_noise: "Sonido", mind_none: "Silencio", mind_rain: "Lluvia", mind_pink: "Ruido suave",
+    mind_phase_in: "Inhala", mind_phase_hold: "Mantén", mind_phase_out: "Exhala", mind_phase_hold2: "Mantén",
+    mind_step1: "Siéntate cómodo, cierra los ojos, suelta las manos.",
+    mind_step2: "Llegarán pensamientos. Obsérvalos y déjalos pasar.",
+    mind_step3: "Vuelve con calma. Abre los ojos cuando quieras.",
+    sleep_bedtime: "Hora de acostarse", sleep_wake: "Hora de despertar", sleep_duration: "Sueño planificado",
+    sleep_log: "Registrar anoche", sleep_to_bed: "Me acosté", sleep_woke: "Me desperté",
+    sleep_add: "Guardar", sleep_week: "Últimas 7 noches (horas)", sleep_tips: "Higiene del sueño",
+    sleep_wind: "Rutina de relajación",
+    s1: "Reinicio rápido", s2: "Respiración 4-7-8", s3: "Enfoque 10", s4: "Escaneo corporal", s5: "Antiestrés", s6: "Globo para niños",
+    wind1: "Sin pantallas 30 min antes", wind2: "Baja las luces", wind3: "Habitación fresca, oscura, quieta",
+    wind4: "Sin cafeína tras el almuerzo", wind5: "Misma hora cada noche",
+    mind_tonight: "Esta noche", mind_times: "sesiones",
+  },
+  ar: {
+    nav_mind: "الذهن", mind_meditate: "تأمل", mind_sleep: "النوم", mind_sessions: "جلسات موجّهة",
+    mind_min: "دقيقة", mind_start: "ابدأ", mind_cancel: "إلغاء", mind_finished: "اكتملت الجلسة",
+    mind_mood: "كيف تشعر الآن؟", mind_saved: "حُفظ", mind_weekly: "هذا الأسبوع", mind_logs: "الأخيرة",
+    mind_noise: "صوت", mind_none: "صمت", mind_rain: "مطر", mind_pink: "ضوضاء ناعمة",
+    mind_phase_in: "شهيق", mind_phase_hold: "احبس", mind_phase_out: "زفير", mind_phase_hold2: "احبس",
+    mind_step1: "اجلس براحة، أغمض عينيك، أرخِ يديك.",
+    mind_step2: "ستأتي الأفكار. لاحظها ودعها تمر.",
+    mind_step3: "عُد بهدوء. افتح عينيك متى استعدت.",
+    sleep_bedtime: "وقت النوم", sleep_wake: "وقت الاستيقاظ", sleep_duration: "النوم المخطط",
+    sleep_log: "سجّل الليلة الماضية", sleep_to_bed: "نمتَ", sleep_woke: "استيقظتَ",
+    sleep_add: "احفظ", sleep_week: "آخر 7 ليالٍ (ساعات)", sleep_tips: "نظافة النوم",
+    sleep_wind: "روتين ما قبل النوم",
+    s1: "إعادة ضبط سريعة", s2: "تنفس 4-7-8", s3: "تركيز 10", s4: "مسح الجسم", s5: "تخفيف التوتر", s6: "بالون الأطفال",
+    wind1: "إيقاف الشاشات قبل 30 دقيقة", wind2: "اخفض الإضاءة", wind3: "غرفة باردة مظلمة هادئة",
+    wind4: "لا كافيين بعد الغداء", wind5: "نفس الموعد كل ليلة",
+    mind_tonight: "الليلة", mind_times: "جلسات",
+  },
+};

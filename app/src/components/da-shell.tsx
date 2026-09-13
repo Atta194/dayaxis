@@ -8,6 +8,7 @@ import Dashboard from "./da-dashboard";
 import Planner from "./da-planner";
 import Kitchen from "./da-kitchen";
 import Move from "./da-move";
+import Mind from "./da-mind";
 import Work from "./da-work";
 import Assist from "./da-assist";
 import Profile from "./da-profile";
@@ -22,20 +23,41 @@ const TABS = [
   { id: "plan", icon: "cal", key: "nav_plan" },
   { id: "kitchen", icon: "pot", key: "nav_kitchen" },
   { id: "move", icon: "dumbbell", key: "nav_move" },
+  { id: "mind", icon: "zen", key: "nav_mind" },
   { id: "work", icon: "wrench", key: "nav_work" },
   { id: "assist", icon: "bulb", key: "nav_assist" },
   { id: "me", icon: "user", key: "nav_me" },
 ];
 
 export default function Shell() {
-  const { data, loading, error, refresh, act } = useDa();
+  const { data, loading, error, refresh, act, offline } = useDa();
   const [lang, setLangState] = useState<Lang>((lsGet(LS.lang) as Lang) || "en");
   const [theme, setThemeState] = useState<"light" | "dark">(lsGet(LS.theme) === "dark" ? "dark" : "light");
   const [view, setViewState] = useState("dash");
   const [memberId, setMemberIdState] = useState<number | null>(Number(lsGet(LS.guest)) || null);
   const [viewMode, setViewModeState] = useState<"cards" | "list" | "compact">((lsGet(LS.view) as "cards" | "list" | "compact") || "cards");
   const [fire, setFire] = useState(0);
+  const [installEvt, setInstallEvt] = useState<{ prompt: () => Promise<void> } | null>(null);
   const { push, zone } = useToasts();
+
+  /* PWA: service worker + install prompt */
+  useEffect(() => {
+    const onInst = (e: Event) => {
+      e.preventDefault();
+      setInstallEvt(e as unknown as { prompt: () => Promise<void> });
+    };
+    const onInstalled = () => setInstallEvt(null);
+    window.addEventListener("beforeinstallprompt", onInst);
+    window.addEventListener("appinstalled", onInstalled);
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onInst);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+  const installApp = installEvt ? () => { void installEvt.prompt(); } : null;
 
   /* theme + lang applied to <html> */
   useEffect(() => {
@@ -107,7 +129,7 @@ export default function Shell() {
   const value = {
     data, act, lang, t, toast: push, setLang, setView, memberId, setMemberId,
     theme, setTheme, viewMode, setViewMode: (m: "cards" | "list" | "compact") => { setViewModeState(m); lsSet(LS.view, m); },
-    celebrate, refresh,
+    celebrate, refresh, offline, installApp,
   };
 
   const current = memberName(data, memberId);
@@ -162,6 +184,7 @@ export default function Shell() {
           {view === "plan" ? <Planner /> : null}
           {view === "kitchen" ? <Kitchen /> : null}
           {view === "move" ? <Move /> : null}
+          {view === "mind" ? <Mind /> : null}
           {view === "work" ? <Work /> : null}
           {view === "assist" ? <Assist /> : null}
           {view === "me" ? <Profile /> : null}
@@ -176,6 +199,9 @@ export default function Shell() {
         </nav>
 
         {zone}
+        {offline ? (
+          <div className="offline-ban"><Ic name="alert" size={15} /> Offline - showing last synced data</div>
+        ) : null}
         <Confetti fire={fire} />
       </div>
     </DaCtx.Provider>

@@ -9,7 +9,7 @@ import { LS, lsGet, lsSet } from "../lib/da-types";
 const COLORS = ["#1E7A6B", "#E8705F", "#E9B44C", "#8A5BB1", "#2E5FA3", "#4C9E6F", "#B3568B", "#8A6D1E"];
 
 export default function Profile() {
-  const { data, act, t, lang, setLang, theme, setTheme, viewMode, setViewMode, toast, memberId, setMemberId, refresh } = useCtx();
+  const { data, act, t, lang, setLang, theme, setTheme, viewMode, setViewMode, toast, memberId, setMemberId, refresh, installApp } = useCtx();
   const [newMember, setNewMember] = useState("");
   const [renaming, setRenaming] = useState<number | null>(null);
   const [renameVal, setRenameVal] = useState("");
@@ -147,6 +147,10 @@ export default function Profile() {
             <button className="btn btn-sm" onClick={() => fileRef.current?.click()}><Ic name="upload" /> {t("import_json")}</button>
             <input ref={fileRef} type="file" accept="application/json" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) restoreFile(f); e.target.value = ""; }} />
           </div>
+          {installApp ? (
+            <button className="btn btn-primary mt2" onClick={installApp}><Ic name="download" /> Install DayAxis as an app</button>
+          ) : null}
+          <p className="small muted mt2" style={{ maxWidth: 420 }}>Install DayAxis to your home screen. With a service worker on board it opens instantly and stays usable offline with your last synced data.</p>
           <div className="row-b mt3" style={{ alignItems: "center" }}>
             <h3 className="h-sec" style={{ fontSize: 15 }}>{showAccount ? t("login") : t("signup")}</h3>
             {data.account_email ? <span className="chip chip-tag" style={{ cursor: "default" }}>{data.account_email}</span> : null}

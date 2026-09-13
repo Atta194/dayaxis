@@ -47,6 +47,16 @@ export interface Worker {
 export interface Review { id: number; worker_id: number; by_name: string; rating: number; text: string; at: string; }
 export interface Feedback { id: number; home_id: string; rating: number; text: string; at: string; }
 
+export interface MindLog {
+  id: number;
+  home_id: string;
+  kind: "meditation" | "sleep";
+  minutes: number;
+  mood: number | null;
+  note: string;
+  at: string;
+}
+
 export interface HomeData {
   home_id: string;
   members: Member[];
@@ -55,6 +65,7 @@ export interface HomeData {
   workers: Worker[];
   reviews: Review[];
   feedback: Feedback[];
+  mind_log: MindLog[];
   my_workers: Worker[];
   account_email: string | null;
 }
@@ -149,6 +160,10 @@ export const LS = {
   session: "da.session",
   guest: "da.guest",
   sounded: "da.sounded", // 'taskId|date' list of already-sounded reminders
+  cache: "da.cache",     // last sync payload for offline view
+  bed: "da.bed",         // bedtime goal HH:MM
+  wake: "da.wake",       // wake goal HH:MM
+  wind: "da.wind",       // wind-down checklist [ids]
 };
 
 export function lsGet(key: string, fallback = ""): string {
