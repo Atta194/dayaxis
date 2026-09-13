@@ -49,7 +49,7 @@ export default function Profile() {
       if (!bk) { toast("backup invalid", "warn"); return; }
       let n = 0;
       for (const m of bk.members as { name?: string; color?: string }[]) {
-        if (m?.name) { await act.addMember(m.name, m.color ?? COLORS[0]); n++; }
+        if (m?.name) { await act.addMember(m.name, m.color ?? COLORS[0], memberId); n++; }
       }
       for (const tk of bk.tasks) {
         if (!tk?.title) continue;

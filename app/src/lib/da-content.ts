@@ -2132,7 +2132,7 @@ export const EMERGENCY: { key: string; label: string; cls: string; num: string; 
 ];
 
 /* seed workers (first sync fills the marketplace) */
-export const SEED_WORKERS: Omit<Worker, "id" | "rating" | "review_count">[] = [
+export const SEED_WORKERS: Omit<Worker, "id" | "rating" | "review_count" | "photo" | "approved" | "phone_verified">[] = [
   { owner_home: null, name: "Arman Bekov", trade: "Electrician", location: "Almaty", phone: "+7 700 111 2233", email: "arman.elec@example.com", experience_years: 12, bio: "Licensed electrician, safe wiring and repairs, works evenings too.", video_url: "", status: "available", availability: "now", rate: "from $15/hr", jobs_done: 214, created_at: "" },
   { owner_home: null, name: "Olga Petrova", trade: "Cleaner", location: "Moscow", phone: "+7 900 222 3344", email: "olga.clean@example.com", experience_years: 6, bio: "Deep cleaning and move-out cleaning, eco products, 4.9 avg rating.", video_url: "", status: "available", availability: "today", rate: "$12/hr", jobs_done: 320, created_at: "" },
   { owner_home: null, name: "Dinesh Kumar", trade: "Plumber", location: "Mumbai", phone: "+91 98 0000 1122", email: "dinesh.plumb@example.com", experience_years: 9, bio: "Leaks, installs, water heaters. 24/7 emergency visits.", video_url: "", status: "available", availability: "now", rate: "from ₹400", jobs_done: 412, created_at: "" },
