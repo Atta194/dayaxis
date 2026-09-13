@@ -187,7 +187,7 @@ export default function Planner() {
                     <tr key={`${r.task_id}-${r.on_date}`} style={{ borderTop: "1px solid var(--line)" }}>
                       <td style={{ padding: "8px 10px" }}>{r.on_date}</td>
                       <td style={{ padding: "8px 10px" }}>{r.task?.title}</td>
-                      <td style={{ padding: "8px 10px" }}><span className="chip chip-tag" data-cat={r.task?.category}>{r.task?.category}</span></td>
+                      <td style={{ padding: "8px 10px" }}><span className="chip chip-tag" data-cat={r.task?.category}>{r.task?.category ? t(`cat_${r.task.category}`) : ""}</span></td>
                       <td style={{ padding: "8px 10px" }}>{r.task?.time}</td>
                       <td style={{ padding: "8px 10px" }}>
                         <span style={{ color: r.kind === "done" ? "var(--ok)" : "var(--gold)", fontWeight: 700 }}>{r.kind}</span>

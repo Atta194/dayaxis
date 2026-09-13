@@ -130,7 +130,7 @@ export default function Assist() {
         <div className="row mt2">
           {cats.map((c) => (
             <button key={c} className="chip" aria-pressed={catFilter === c} onClick={() => setCatFilter(c)}>
-              {c === "all" ? t("all_good").slice(0, 3) : t(`nav_${c === "general" ? "assist" : c}`)}
+              {t(`cat_${c}`)}
             </button>
           ))}
         </div>

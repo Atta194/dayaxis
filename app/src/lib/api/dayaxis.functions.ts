@@ -66,7 +66,7 @@ export const da = createServerFn({ method: "POST" })
         case "postpone": return await postpone(DB, p);
         case "worker_save": return await workerSave(DB, home, p);
         case "worker_delete": return await workerDelete(DB, home, p);
-        case "worker_status": return await workerStatus(DB, p);
+        case "worker_status": return await workerStatus(DB, home, p);
         case "review_add": return await reviewAdd(DB, home, p);
         case "feedback_add": return await feedbackAdd(DB, home, p);
         case "mind_add": return await mindAdd(DB, home, p);
@@ -263,12 +263,12 @@ async function workerDelete(DB: D1Database, home: string, p: Record<string, unkn
   return syncAll(DB, home);
 }
 
-async function workerStatus(DB: D1Database, p: Record<string, unknown>) {
+async function workerStatus(DB: D1Database, home: string, p: Record<string, unknown>) {
   const id = clampNum(p.id, 0, 0, 1e9);
   const status = ["available", "busy", "offline"].includes(str(p.status, "available", 12)) ? str(p.status, "available", 12) : "available";
   const availability = ["now", "today", "week"].includes(str(p.availability, "now", 10)) ? str(p.availability, "now", 10) : "now";
   await DB.prepare("UPDATE workers SET status = ?, availability = ? WHERE id = ?").bind(status, availability, id).run();
-  return { ok: true as const };
+  return syncAll(DB, home);
 }
 
 async function reviewAdd(DB: D1Database, home: string, p: Record<string, unknown>) {

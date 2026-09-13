@@ -476,7 +476,41 @@ const D: Record<Lang, Dict> = {
 };
 
 export const t = (lang: Lang, key: string): string =>
-  D[lang][key] ?? MIND_D[lang]?.[key] ?? MIND_D.en[key] ?? D.en[key] ?? key;
+  D[lang][key] ?? MIND_D[lang]?.[key] ?? CAT_D[lang]?.[key] ?? CAT_D.en[key] ?? MIND_D.en[key] ?? D.en[key] ?? key;
+
+/* category + helper labels (shared by dashboard, task modal, assistant) */
+const CAT_D: Record<Lang, Record<string, string>> = {
+  en: {
+    cat_all: "All", cat_meal: "Meals", cat_medicine: "Medicine", cat_childcare: "Kids & parents",
+    cat_exercise: "Exercise", cat_family: "Family", cat_break: "Breaks", cat_custom: "Custom",
+    cat_general: "Tips", mind_breath: "Breathing", mind_guide: "Guided", mind_focus: "Focus", mind_kids: "Kids",
+  },
+  ru: {
+    cat_all: "Все", cat_meal: "Приём пищи", cat_medicine: "Лекарства", cat_childcare: "Дети и родители",
+    cat_exercise: "Спорт", cat_family: "Семья", cat_break: "Отдых", cat_custom: "Своё",
+    cat_general: "Советы", mind_breath: "Дыхание", mind_guide: "Гид", mind_focus: "Фокус", mind_kids: "Дети",
+  },
+  hi: {
+    cat_all: "सभी", cat_meal: "भोजन", cat_medicine: "दवा", cat_childcare: "बच्चे और माता-पिता",
+    cat_exercise: "व्यायाम", cat_family: "परिवार", cat_break: "आराम", cat_custom: "अन्य",
+    cat_general: "टिप्स", mind_breath: "साँस", mind_guide: "निर्देशित", mind_focus: "फोकस", mind_kids: "बच्चे",
+  },
+  ur: {
+    cat_all: "تمام", cat_meal: "کھانا", cat_medicine: "دوا", cat_childcare: "بچے اور والدین",
+    cat_exercise: "ورزش", cat_family: "خاندان", cat_break: "آرام", cat_custom: "دیگر",
+    cat_general: "ٹپس", mind_breath: "سانس", mind_guide: "رہنمائی", mind_focus: "فوکس", mind_kids: "بچے",
+  },
+  es: {
+    cat_all: "Todas", cat_meal: "Comidas", cat_medicine: "Medicinas", cat_childcare: "Niños y padres",
+    cat_exercise: "Ejercicio", cat_family: "Familia", cat_break: "Descanso", cat_custom: "Otra",
+    cat_general: "Trucos", mind_breath: "Respiración", mind_guide: "Guiada", mind_focus: "Enfoque", mind_kids: "Infantil",
+  },
+  ar: {
+    cat_all: "الكل", cat_meal: "وجبات", cat_medicine: "أدوية", cat_childcare: "الأطفال والوالدان",
+    cat_exercise: "رياضة", cat_family: "العائلة", cat_break: "راحة", cat_custom: "أخرى",
+    cat_general: "نصائح", mind_breath: "تنفس", mind_guide: "موجّهة", mind_focus: "تركيز", mind_kids: "أطفال",
+  },
+};
 
 /* ============================= categories ============================= */
 export const CATS: { id: Cat; color: string }[] = [
@@ -709,7 +743,7 @@ export function smartReply(q: string, lang: Lang): { answer: string; tip?: Tip }
   else if (match(/save|time|hack|tip|quick|econom|быстр|эконом|لائیف ہیک|टिप/i)) cat = "general";
   const pool = cat ? TIPS.filter((x) => x.cat === cat) : TIPS.filter((x) => x.cat === "general");
   const tip = pool[Math.floor(Math.random() * pool.length)];
-  const catLabel = cat ? t(lang, `nav_${cat}`) : t(lang, "tip_general");
+  const catLabel = cat ? t(lang, `cat_${cat}`) : t(lang, "tip_general");
   return {
     answer: `${t(lang, "scanned_done")} ${catLabel} ${t(lang, "assist")}. ${tip.title}: ${tip.body}`,
     tip,

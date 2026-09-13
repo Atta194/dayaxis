@@ -124,24 +124,18 @@ function Player({ session, onClose }: { session: MindSession; onClose: () => voi
 
   useEffect(() => {
     if (!running || finished) return;
-    const iv = setInterval(() => {
-      setElapsed((e) => {
-        const nx = e + 1;
-        if (nx >= total) {
-          clearInterval(iv);
-          setFinished(true);
-          setRunning(false);
-          beep("bell");
-          void act.mindAdd("meditation", session.mins, null, t(session.titleKey));
-          return total;
-        }
-        return nx;
-      });
-    }, 1000);
+    const iv = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(iv);
-  }, [running, finished, total, session, act, t]);
+  }, [running, finished]);
 
-  useEffect(() => { useNoise(noise); }, [noise]);
+  const done = elapsed >= total;
+  useEffect(() => {
+    if (finished || !done) return;
+    setFinished(true);
+    setRunning(false);
+    beep("bell");
+  }, [done, finished]);
+  useNoise(noise);
 
   const phaseSec = pattern.reduce((a, b) => a + b.sec, 0);
   const cyclePos = elapsed % phaseSec;

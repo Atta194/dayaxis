@@ -167,7 +167,7 @@ export default function Profile() {
               <div className="row">
                 <button className="btn btn-primary btn-sm" onClick={async () => {
                   const r = email && pass.length >= 6 ? await act.signup(email, pass) : { ok: false as const, error: "short" };
-                  if (r.ok) { toast(t("task_saved")); setEmail(""); setPass(""); void refresh(); }
+                  if (r.ok) { toast(t("welcome")); setEmail(""); setPass(""); void refresh(); }
                   else toast(r.error === "email-exists" ? "Account exists - sign in" : r.error, "warn");
                 }}>{t("signup")}</button>
                 <button className="btn btn-sm" onClick={async () => {

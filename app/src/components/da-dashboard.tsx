@@ -125,7 +125,7 @@ export default function Dashboard() {
         </div>
         <div className="row mt1">
           {CATS.slice(0, 6).map((c) => (
-            <button key={c.id} className="chip" aria-pressed={qcat === c.id} onClick={() => setQcat(c.id)}>{t(`nav_${c.id === "meal" ? "kitchen" : c.id === "childcare" ? "nav_dash" : c.id}`)}</button>
+            <button key={c.id} className="chip" aria-pressed={qcat === c.id} onClick={() => setQcat(c.id)}>{t(`cat_${c.id}`)}</button>
           ))}
         </div>
       </div>

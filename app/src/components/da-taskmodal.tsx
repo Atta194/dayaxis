@@ -61,7 +61,7 @@ export function TaskRow({ task, date, onEdited }: {
           {open && task.notes ? <p className="mt1 muted" style={{ fontSize: 13 }}>{task.notes}</p> : null}
           <div className="task-sub mt1">
             {task.time ? <span><Ic name="clock" size={13} /> {fmtHM(task.time)}</span> : null}
-            {cat ? <span className="chip chip-tag" data-cat={cat.id} style={{ padding: "2px 9px", fontSize: 11.5 }}>{t(`nav_${cat.id === "meal" ? "kitchen" : cat.id === "childcare" ? "nav_dash" : cat.id}`)}</span> : null}
+            {cat ? <span className="chip chip-tag" data-cat={cat.id} style={{ padding: "2px 9px", fontSize: 11.5 }}>{t(`cat_${cat.id}`)}</span> : null}
             {member != null ? <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
               <span className="dot" style={{ background: memberColor(data, member) }} />{memberName(data, member)}
             </span> : null}
@@ -151,7 +151,7 @@ export function TaskModal({ onClose, presetDate, preset }: {
             {CATS.map((c) => (
               <button key={c.id} className="chip" aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>
                 <Ic name={c.id === "meal" ? "pot" : c.id === "medicine" ? "shield" : c.id === "exercise" ? "dumbbell" : c.id === "family" ? "users" : c.id === "break" ? "heart" : "spark"} size={14} />
-                {t(`nav_${c.id === "meal" ? "kitchen" : c.id === "childcare" ? "nav_dash" : c.id}`)}
+                {t(`cat_${c.id}`)}
               </button>
             ))}
           </div>
