@@ -25,6 +25,7 @@ type AppEnv = {
   HF_ENV?: string;
   APP_SLUG?: string;
   STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
 };
 
 export function bindings(): AppEnv {

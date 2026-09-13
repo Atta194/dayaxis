@@ -1,13 +1,14 @@
 /* DayAxis - plans & pricing + sponsor ad management panels. */
 import { useState } from "react";
 
-import { PLANS } from "../lib/da-content";
+import { PLANS, PLANS_ENABLED } from "../lib/da-content";
 import { isDaError } from "../lib/da-client";
 import { useCtx } from "./da-ctx";
 import { Ic } from "./da-ui";
 
 export function PlansPanel() {
   const { data, act, t, toast } = useCtx();
+  if (!PLANS_ENABLED) return null; // dormant during the public-test month
   const sub = data.subscription;
   const now = Date.now();
   const exp = sub?.expires_at ? new Date(sub.expires_at.replace(" ", "T") + "Z").getTime() : 0;

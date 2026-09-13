@@ -1,7 +1,7 @@
 /* DayAxis - Dashboard view. */
 import { useState } from "react";
 
-import { CATS } from "../lib/da-content";
+import { CATS, SAMPLE_ADS } from "../lib/da-content";
 import { useCtx, memberName } from "./da-ctx";
 import { TaskModal, TaskRow } from "./da-taskmodal";
 import { Ic, Ring } from "./da-ui";
@@ -158,15 +158,26 @@ export default function Dashboard() {
           {t("sponsored")}
         </span>
         {data.ads.length === 0 ? (
-          <div
-            className="card card-soft mt1"
-            style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between", padding: "12px 16px", cursor: "pointer" }}
-            onClick={() => setView("me")}
-            role="button"
-          >
-            <span className="small muted">{t("sponsor_slot")}</span>
-            <button className="btn btn-sm"><Ic name="plus" size={14} /> {t("ad_add")}</button>
-          </div>
+          <>
+            <div className="grid mt1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+              {SAMPLE_ADS.slice(0, 3).map((ad) => (
+                <a
+                  key={ad.link}
+                  className="card card-soft"
+                  href={ad.link} target="_blank" rel="noreferrer"
+                  style={{ textDecoration: "none", color: "inherit", display: "grid", gap: 3, padding: "12px 16px" }}
+                >
+                  <b style={{ fontSize: 14 }}>{ad.title}</b>
+                  {ad.tagline ? <span className="small muted">{ad.tagline}</span> : null}
+                  <span className="small" style={{ color: "var(--brand)" }}>{ad.link.replace(/^https?:\/\//, "")}</span>
+                </a>
+              ))}
+            </div>
+            <div className="row mt1" style={{ justifyContent: "space-between" }}>
+              <span className="small muted">Helpful links while real sponsors join.</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setView("me")}><Ic name="plus" size={13} /> {t("ad_add")}</button>
+            </div>
+          </>
         ) : (
           <div className="grid mt1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
             {data.ads.map((ad) => (

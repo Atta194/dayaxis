@@ -339,7 +339,7 @@ function useAudio(listen: string, lang: Lang) {
       const text = LISTEN_TEXT_KEY[listen]?.(lang);
       if (text && "speechSynthesis" in window) {
         const u = new SpeechSynthesisUtterance(text.slice(0, 260));
-        const map: Record<Lang, string> = { en: "en-US", ru: "ru-RU", hi: "hi-IN", ur: "ur-PK", es: "es-ES", ar: "ar-SA" };
+        const map: Partial<Record<Lang, string>> = { en: "en-US", ru: "ru-RU", hi: "hi-IN", ur: "ur-PK", es: "es-ES", ar: "ar-SA", de: "de-DE", fr: "fr-FR", it: "it-IT", pt: "pt-PT", nl: "nl-NL", pl: "pl-PL", cs: "cs-CZ", tr: "tr-TR", uk: "uk-UA", zh: "zh-CN", ja: "ja-JP", ko: "ko-KR", vi: "vi-VN", th: "th-TH", id: "id-ID", bn: "bn-BD", sw: "sw-KE", af: "af-ZA" };
         u.lang = map[lang] ?? "en-US";
         u.rate = 0.95;
         window.speechSynthesis.cancel();

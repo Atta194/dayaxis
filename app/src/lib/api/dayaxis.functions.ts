@@ -296,7 +296,11 @@ async function mindDelete(DB: D1Database, home: string, p: Record<string, unknow
 
 /* ---------------- subscriptions & ads ---------------- */
 
+// Plans are dormant during the public-test month; flip to true to activate.
+const PLANS_ACTIVE = false;
+
 async function startTrial(DB: D1Database, home: string) {
+  if (!PLANS_ACTIVE) return { ok: false as const, error: "plans-disabled" };
   await DB.prepare(
     `INSERT INTO subscriptions (home_id, plan, status, started_at, expires_at, updated_at)
      VALUES (?, 'trial', 'active', datetime('now'), datetime('now','+7 days'), datetime('now'))
@@ -309,6 +313,7 @@ async function startTrial(DB: D1Database, home: string) {
 const PLAN_PRICES: Record<string, number> = { weekly: 195, monthly: 445, yearly: 3000 }; // USD cents
 
 async function subscribePlan(DB: D1Database, home: string, p: Record<string, unknown>) {
+  if (!PLANS_ACTIVE) return { ok: false as const, error: "plans-disabled" };
   const plan = ["weekly", "monthly", "yearly"].includes(str(p.plan, "", 12)) ? str(p.plan, "", 12) : null;
   if (!plan) return { ok: false as const, error: "bad-plan" };
   const { STRIPE_SECRET_KEY } = bindings();
@@ -331,6 +336,8 @@ async function subscribePlan(DB: D1Database, home: string, p: Record<string, unk
       "line_items[0][price_data][product_data][name]": `DayAxis - ${plan} plan`,
       success_url: `${origin}/?checkout=success`,
       cancel_url: `${origin}/?checkout=cancel`,
+      "metadata[home_id]": home,
+      "metadata[plan]": plan,
     }).toString(),
   });
   const json = (await res.json()) as { url?: string; error?: { message?: string } };

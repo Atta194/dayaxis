@@ -1,6 +1,9 @@
 /* DayAxis shared types + pure helpers (client-safe, no Node/DOM only where noted). */
 
-export type Lang = "en" | "ru" | "hi" | "ur" | "es" | "ar";
+export type Lang =
+  | "en" | "ru" | "hi" | "ur" | "es" | "ar"
+  | "de" | "fr" | "it" | "pt" | "nl" | "pl" | "cs" | "tr" | "uk"
+  | "zh" | "ja" | "ko" | "vi" | "th" | "id" | "bn" | "sw" | "af";
 export type Cat =
   | "meal" | "medicine" | "childcare" | "exercise" | "family" | "break" | "custom";
 
@@ -244,8 +247,8 @@ export function speak(text: string, lang: Lang): void {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text.slice(0, 160));
-    const map: Record<Lang, string> = { en: "en-US", ru: "ru-RU", hi: "hi-IN", ur: "ur-PK", es: "es-ES", ar: "ar-SA" };
-    if ("lang" in u) u.lang = map[lang];
+    const map: Partial<Record<Lang, string>> = { en: "en-US", ru: "ru-RU", hi: "hi-IN", ur: "ur-PK", es: "es-ES", ar: "ar-SA", de: "de-DE", fr: "fr-FR", it: "it-IT", pt: "pt-PT", nl: "nl-NL", pl: "pl-PL", cs: "cs-CZ", tr: "tr-TR", uk: "uk-UA", zh: "zh-CN", ja: "ja-JP", ko: "ko-KR", vi: "vi-VN", th: "th-TH", id: "id-ID", bn: "bn-BD", sw: "sw-KE", af: "af-ZA" };
+    if ("lang" in u) u.lang = map[lang] ?? "en-US";
     u.rate = 1.02; u.pitch = 1;
     window.speechSynthesis.speak(u);
   } catch { /* unsupported */ }
@@ -270,7 +273,7 @@ export function speechInput(onResult: (text: string) => void, lang: Lang): () =>
   const C = SR as (new () => { lang: string; start(): void; onresult: ((e: { results: { [k: number]: { [k: number]: { transcript: string } } } }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null }) | undefined;
   if (!C) return () => {};
   const rec = new C();
-  const map: Record<Lang, string> = { en: "en-US", ru: "ru-RU", hi: "hi-IN", ur: "ur-PK", es: "es-ES", ar: "ar-SA" };
+  const map: Partial<Record<Lang, string>> = { en: "en-US", ru: "ru-RU", hi: "hi-IN", ur: "ur-PK", es: "es-ES", ar: "ar-SA", de: "de-DE", fr: "fr-FR", it: "it-IT", pt: "pt-PT", nl: "nl-NL", pl: "pl-PL", cs: "cs-CZ", tr: "tr-TR", uk: "uk-UA", zh: "zh-CN", ja: "ja-JP", ko: "ko-KR", vi: "vi-VN", th: "th-TH", id: "id-ID", bn: "bn-BD", sw: "sw-KE", af: "af-ZA" };
   rec.lang = map[lang] ?? "en-US";
   rec.onresult = (e) => {
     const t = e.results[0]?.[0]?.transcript;
