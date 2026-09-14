@@ -249,6 +249,21 @@ a { color: var(--brand); }
 .scroll-block-lg { max-height: min(58dvh, 600px); overflow-y: auto; padding-right: 4px; }
 .scroll-x { overflow-x: auto; }
 
+/* viewport-fitting dashboard: no page scroll on desktop */
+.fit-page { display: grid; gap: 12px; min-width: 0; }
+@media (min-width: 1080px) {
+  .fit-page { height: calc(100dvh - 108px); grid-template-rows: auto auto minmax(0, 1fr) auto; }
+  .fit-page > [data-fit="full"] { grid-column: 1 / -1; min-width: 0; }
+  .fit-page > [data-fit="cols"] { display: grid; grid-template-columns: 1.3fr 0.9fr; gap: 12px; min-height: 0; }
+  .fit-page [data-fit="cols"] > * { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .fit-page .fit-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
+  .fit-page .fit-col-group { min-height: 0; overflow-y: auto; padding-right: 4px; }
+}
+@media (max-width: 1079px) {
+  .fit-page { grid-template-columns: 1fr; }
+  .fit-page > [data-fit="cols"] { display: grid; gap: 12px; }
+}
+
 /* progress bars */
 .pbar { height: 9px; border-radius: 999px; background: var(--line); overflow: hidden; }
 .pbar > div { height: 100%; border-radius: 999px; background: var(--brand); transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); }

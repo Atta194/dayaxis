@@ -56,16 +56,17 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="row-b">
-        <div>
-          <h1 className="h-display">{greet}</h1>
-          <p className="muted mt1" style={{ fontSize: 15 }}>{fmtShort(today, lang)} · {memberName(data, memberId)}</p>
+      <div className="fit-page">
+      <div className="row-b" data-fit="full">
+        <div className="row" style={{ gap: 10, alignItems: "baseline" }}>
+          <span className="h-display" style={{ fontSize: "clamp(20px, 2.6vw, 28px)" }}>{greet}</span>
+          <span className="muted small">{fmtShort(today, lang)} · {memberName(data, memberId)}</span>
         </div>
         <button className="btn btn-accent" onClick={() => setAdding(true)}><Ic name="plus" /> {t("add_task")}</button>
       </div>
 
       {/* stats */}
-      <div className="grid mt3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))", alignItems: "stretch" }}>
+      <div className="grid" data-fit="full" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(112px, 1fr))", alignItems: "stretch", gap: 10 }}>
         <div className="card" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
           <Ring pct={pct} size={100} sub={`${doneToday}/${totalToday}`} />
         </div>
@@ -76,13 +77,13 @@ export default function Dashboard() {
       </div>
 
       {/* week + today - two-column, no page scroll */}
-      <div className="twocol mt3">
+      <div data-fit="cols">
         <div className="card">
           <div className="row-b">
             <h2 className="h-sec" style={{ fontSize: 16 }}>{sel === today ? t("plan_today") : fmtShort(sel, lang)}</h2>
             <span className="muted small tnum">{selTasks.filter((x) => occStatus(x, sel, data.completions) === "done").length}/{selTasks.length} · {t("done")}</span>
           </div>
-          <div className="scroll-block mt2" style={{ display: "grid", gap: viewMode === "compact" ? 6 : 8 }}>
+          <div className="fit-scroll mt2" style={{ display: "grid", gap: viewMode === "compact" ? 6 : 8 }}>
             {selTasks.length === 0 ? (
               <div className="card" style={{ textAlign: "center", padding: "26px 14px" }}>
                 <Ic name="spark" size={24} />
@@ -113,7 +114,7 @@ export default function Dashboard() {
               );
             })}
           </div>
-          <div className="weekchart mt3">
+          <div className="weekchart mt2 fit-scroll">
             {days.map((d) => {
               const list = tasksForDate(data.tasks, d);
               const done = list.filter((x) => occStatus(x, d, data.completions) === "done").length;
@@ -129,10 +130,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {adding ? <TaskModal onClose={() => setAdding(false)} presetDate={today} /> : null}
-
       {/* sponsored slot */}
-      <div className="mt3" style={{ borderTop: "1px solid var(--line)", paddingTop: 14 }}>
+      <div className="mt3" data-fit="full" style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
         <span className="small" style={{ fontWeight: 700, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           {t("sponsored")}
         </span>
@@ -175,6 +174,9 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      </div>
+
+      {adding ? <TaskModal onClose={() => setAdding(false)} presetDate={today} /> : null}
     </div>
   );
 }

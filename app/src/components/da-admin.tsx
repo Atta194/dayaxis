@@ -46,11 +46,16 @@ export default function Admin() {
   };
 
   return (
-    <div>
-      <h1 className="h-display">{t("nav_admin")}</h1>
-      <p className="muted mt1" style={{ fontSize: 14.5 }}>{t("admin_analytics")}</p>
+    <div className="fit-page">
+      <div className="row-b" data-fit="full">
+        <div>
+          <h1 className="h-display" style={{ fontSize: "clamp(20px, 2.6vw, 28px)" }}>{t("nav_admin")}</h1>
+          <p className="muted mt1" style={{ fontSize: 13.5 }}>{t("admin_analytics")}</p>
+        </div>
+        <span className="chip chip-tag" style={{ cursor: "default" }}><Ic name="shield" size={13} /> Admin</span>
+      </div>
 
-      <div className="grid mt3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(128px, 1fr))" }}>
+      <div className="grid" data-fit="full" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(124px, 1fr))", gap: 10 }}>
         {stat("Accounts", stats?.accounts ?? "…", "brand", "users")}
         {stat("Homes", stats?.homes ?? "…", "brand", "user")}
         {stat("Tasks", stats?.tasks ?? "…", "gold", "check")}
@@ -62,7 +67,10 @@ export default function Admin() {
         {stat(t("plan_active"), stats?.active_subs ?? "…", "brand", "shield")}
       </div>
 
-      <div className="card mt3">
+      <div data-fit="cols">
+      <div className="fit-col-group" style={{ display: "grid", gap: 12, alignContent: "start" }}>
+
+      <div className="card">
         <h3 className="h-sec" style={{ fontSize: 15.5 }}>Completed tasks - last 7 days</h3>
         <div className="weekchart mt2">
           {(stats?.week ?? []).map((w) => (
@@ -111,9 +119,12 @@ export default function Admin() {
           ))}
         </div>
       </div>
+      </div>
+
+      <div className="fit-col-group" style={{ display: "grid", gap: 12, alignContent: "start" }}>
 
       {/* Tips content manager (add / update / delete) */}
-      <div className="card mt3">
+      <div className="card">
         <h3 className="h-sec" style={{ fontSize: 15.5 }}>{t("tips_title")} (admin)</h3>
         <div className="mt2" style={{ display: "grid", gap: 8, maxWidth: 620 }}>
           <div className="row" style={{ flexWrap: "nowrap" }}>
@@ -171,6 +182,8 @@ export default function Admin() {
             </div>
           ))}
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );
